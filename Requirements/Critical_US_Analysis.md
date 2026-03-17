@@ -6,14 +6,14 @@ This document identifies the most architecturally significant User Stories by cr
 
 ### High/High Quality Attribute Scenarios
 
-| Scenario ID | Quality Attribute | Description |
-|---|---|---|
-| PER-01 | Performance | Real-time inventory update across branches |
-| SEC-02 | Security | Data segmentation by branch (multi-tenancy) |
-| REL-01 | Reliability | Offline-online synchronization without data loss |
-| REL-02 | Reliability | Recovery from partial synchronization failure |
-| USA-01 | Usability | Transparent offline operation during consultations |
-| ESC-02 | Scalability | Branch growth without performance degradation |
+| Scenario ID | Quality Attribute | Description                                        |
+| ----------- | ----------------- | -------------------------------------------------- |
+| PER-01      | Performance       | Real-time inventory update across branches         |
+| SEC-02      | Security          | Data segmentation by branch (multi-tenancy)        |
+| REL-01      | Reliability       | Offline-online synchronization without data loss   |
+| REL-02      | Reliability       | Recovery from partial synchronization failure      |
+| USA-01      | Usability         | Transparent offline operation during consultations |
+| ESC-02      | Scalability       | Branch growth without performance degradation      |
 
 ---
 
