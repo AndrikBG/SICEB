@@ -36,46 +36,46 @@ graph TD
     note1 -.-> USRN
 ```
 ---
-## Objetivos del negocio
-La clínica busca alcanzar los siguientes objetivos estratégicos:
+## Business Objectives
+The clinic aims to achieve the following strategic objectives:
 
-- **Gestión Financiera:** Registrar eficientemente ingresos y gastos por servicio, generar reportes de rentabilidad financiera.
-- **Gestión de Clientes:** Mantener expedientes digitales centralizados con historial completo de atención.
-- **Gestión de Inventario:** Control riguroso de insumos médicos, materiales y medicamentos.
-- **Gestión de Personal:** Control sobre médicos adscritos y residentes, registro de actividades de capacitación.
-## UH primarias
-| Rango | ID UH      | Nombre Corto                         | Escenarios Alta/Alta Soportados |
-| ----- | ---------- | ------------------------------------ | ------------------------------- |
-| 1     | **UH-076** | Operación offline y sincronización   | REL-01, REL-02, USA-01          |
-| 2     | **UH-074** | Selección de Sucursal Activa         | SEC-02, ESC-02                  |
-| 3     | **UH-071** | Registro de Sucursal                 | SEC-02, ESC-02                  |
-| 4     | **UH-003** | Permisos basados en roles            | SEC-02                          |
-| 5     | **UH-026** | Inmutabilidad del expediente         | REL-02                          |
-| 6     | **UH-025** | Agregar consulta al expediente       | REL-01, USA-01                  |
-| 7     | **UH-004** | Vista completa de inventario (Admin) | PER-01                          |
-| 8     | **UH-024** | Crear expediente clínico             | USA-01                          |
-| 9     | **UH-031** | Prescribir medicamentos              | USA-01                          |
-| 10    | **UH-044** | Registrar pagos                      | REL-01                          |
-## Atributos de calidad
-| ID del Escenario | Atributo de Calidad | Descripción                                                 |
+- **Financial Management:** Efficiently record income and expenses per service, generate financial profitability reports.
+- **Client Management:** Maintain centralized digital records with a complete care history.
+- **Inventory Management:** Rigorous control of medical supplies, materials, and medications.
+- **Staff Management:** Control over attending physicians and residents, record of training activities.
+## Primary User Stories (UH)
+| Rank | UH ID      | Short Name                           | High/High Scenarios Supported   |
+| ---- | ---------- | ------------------------------------ | ------------------------------- |
+| 1    | **UH-076** | Offline operation & synchronization  | REL-01, REL-02, USA-01          |
+| 2    | **UH-074** | Active branch selection              | SEC-02, ESC-02                  |
+| 3    | **UH-071** | Branch registration                  | SEC-02, ESC-02                  |
+| 4    | **UH-003** | Role-based permissions               | SEC-02                          |
+| 5    | **UH-026** | Record immutability                  | REL-02                          |
+| 6    | **UH-025** | Add consultation to record           | REL-01, USA-01                  |
+| 7    | **UH-004** | Full inventory view (Admin)          | PER-01                          |
+| 8    | **UH-024** | Create clinical record               | USA-01                          |
+| 9    | **UH-031** | Prescribe medications                | USA-01                          |
+| 10   | **UH-044** | Register payments                    | REL-01                          |
+## Quality Attributes
+| Scenario ID      | Quality Attribute   | Description                                                 |
 | ---------------- | ------------------- | ----------------------------------------------------------- |
-| PER-01           | Desempeño           | Actualización de inventario en tiempo real entre sucursales |
-| SEC-02           | Seguridad           | Segmentación de datos por sucursal (multi-tenancy)          |
-| REL-01           | Confiabilidad       | Sincronización offline-online sin pérdida de datos          |
-| REL-02           | Confiabilidad       | Recuperación de sincronización parcial fallida              |
-| USA-01           | Usabilidad          | Operación offline transparente durante consultas            |
-| ESC-02           | Escalabilidad       | Crecimiento de sucursales sin degradación de rendimiento    |
-## Revisar restricciones
-### Restricciones Técnicas
-| ID         | Restricción                                                                                                                                                 |
+| PER-01           | Performance         | Real-time inventory updates across branches                 |
+| SEC-02           | Security            | Branch-level data segmentation (multi-tenancy)              |
+| REL-01           | Reliability         | Offline-to-online sync with zero data loss                  |
+| REL-02           | Reliability         | Recovery from partial synchronization failure                 |
+| USA-01           | Usability           | Transparent offline operation during consultations            |
+| ESC-02           | Scalability         | Branch growth without performance degradation                 |
+## Review Constraints
+### Technical Constraints
+| ID         | Constraint                                                                                                                                                  |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CON-01** | El sistema debe desarrollarse como una **Progressive Web App (PWA)** con arquitectura Hybrid Cloud (SaaS); las aplicaciones móviles nativas están excluidas |
-| **CON-02** | Toda la comunicación entre clientes y el servidor en la nube debe usar protocolos **HTTPS / Secure WebSocket**                                              |
-| **CON-03** | El frontend debe soportar las **dos versiones más recientes** de Chrome, Edge, Safari y Firefox en dispositivos de escritorio y tablets                     |
-| **CON-04** | El backend debe exponer una **API REST** para todas las integraciones externas                                                                              |
-| **CON-05** | **No se soportan imágenes diagnósticas (DICOM/PACS)**; los resultados de laboratorio se capturan únicamente en formato de texto                             |
+| **CON-01** | The system must be developed as a **Progressive Web App (PWA)** with Hybrid Cloud (SaaS) architecture; native mobile apps are excluded                      |
+| **CON-02** | All communication between clients and the cloud server must use **HTTPS / Secure WebSocket** protocols                                                      |
+| **CON-03** | The frontend must support the **two most recent versions** of Chrome, Edge, Safari, and Firefox on desktop and tablet devices                               |
+| **CON-04** | The backend must expose a **REST API** for all external integrations                                                                                        |
+| **CON-05** | **Diagnostic imaging (DICOM/PACS) is not supported**; laboratory results are captured strictly in text format                                               |
 
-## **Revisar preocupaciones arquitecturales**
+## **Review Architectural Concerns**
 
 # High-Priority Architectural Concerns — SICEB
 
