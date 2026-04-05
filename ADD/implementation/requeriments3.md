@@ -8,7 +8,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 
 **Business objective:** Gestión de Personal — Control over physicians, residents, and staff with role-appropriate access.
 
-**Drivers addressed:** UH-003, US-001, US-002, US-050, US-051, US-066, SEC-01, SEC-02, SEC-04, MNT-03, CRN-15, CRN-13, CRN-17, CRN-18, CRN-32.
+**Drivers addressed:** US-003, US-001, US-002, US-050, US-051, US-066, SEC-01, SEC-02, SEC-04, MNT-03, CRN-15, CRN-13, CRN-17, CRN-18, CRN-32.
 
 ---
 
@@ -60,7 +60,7 @@ graph TD
 
 | Driver | Type | Description | Why this iteration |
 |---|---|---|---|
-| **UH-003** | Primary UH (rank 4) | Role-based permissions — foundational to every user-facing module; supports SEC-02 | Rank 4 primary user story; every module built in Iterations 4–7 depends on RBAC being in place |
+| **US-003** | Primary US (rank 4) | Role-based permissions — foundational to every user-facing module; supports SEC-02 | Rank 4 primary user story; every module built in Iterations 4–7 depends on RBAC being in place |
 
 ### Supporting User Stories
 
@@ -224,9 +224,9 @@ graph TB
 |---|---|---|
 | **AuthenticationService** | Validates credentials against bcrypt hashes. Issues JWT access token (15-min TTL) with claims: userId, role, residencyLevel, branchAssignments, activeBranchId, permissions, consentScopes. Issues refresh token (7-day TTL, server-side, revocable). Checks TokenDenyList. Emits audit events for login success/failure/refresh | US-002, SEC-04, CRN-43 |
 | **TokenDenyList** | In-memory cache backed by DB table. Stores JTI of revoked tokens. Populated on user deactivation, explicit revocation, or suspicious activity. Auto-purges after original TTL | US-001, SEC-04 |
-| **AuthorizationMiddleware** | Intercepts every request. Evaluates three dimensions: (1) role permission, (2) branch assignment, (3) residency level via ResidencyLevelPolicy. Rejects with 403 + audit event on failure | SEC-01, SEC-02, CRN-15, UH-003 |
+| **AuthorizationMiddleware** | Intercepts every request. Evaluates three dimensions: (1) role permission, (2) branch assignment, (3) residency level via ResidencyLevelPolicy. Rejects with 403 + audit event on failure | SEC-01, SEC-02, CRN-15, US-003 |
 | **ResidencyLevelPolicy** | Encodes R1–R4 hierarchical rules from DB, cached in memory. R1/R2/R3 blocked from `controlled_med:prescribe`; R1/R2 require mandatory supervision. Evaluated for permissions with `requiresResidencyCheck` | US-050, US-051, SEC-01 |
-| **RolePermissionModel** | Data-driven storage of roles, permissions, and mappings. 11 system roles seeded and protected. Admin can create new roles. Validates regulatory constraints | MNT-03, UH-003, CRN-15 |
+| **RolePermissionModel** | Data-driven storage of roles, permissions, and mappings. 11 system roles seeded and protected. Admin can create new roles. Validates regulatory constraints | MNT-03, US-003, CRN-15 |
 | **UserManagementService** | User CRUD with role/branch assignment. Deactivation triggers TokenDenyList revocation. Medical staff: residencyLevel, supervisorStaffId (mandatory R1/R2) | US-001, CRN-15 |
 
 ### 5.3 — Audit & Compliance Module Internals (Iteration 3)
@@ -354,11 +354,11 @@ graph TB
 | Component | Responsibilities | Key Drivers |
 |---|---|---|
 | **LoginView** | Renders login form. Displays authentication errors without revealing which field is incorrect. On success, stores JWT via SessionManager and navigates to BranchSelectionView | US-002, SEC-04 |
-| **BranchSelectionView** | Displays branches from JWT `branchAssignments` claim. Triggers `POST /session/branch`. For single-branch users, auto-selects and skips | UH-003, SEC-02 |
+| **BranchSelectionView** | Displays branches from JWT `branchAssignments` claim. Triggers `POST /session/branch`. For single-branch users, auto-selects and skips | US-003, SEC-02 |
 | **SessionManager** | Stores JWT in memory (not localStorage) — XSS mitigation. Monitors TTL and auto-refreshes. Detects expired/revoked tokens. Exposes user context to all components. Handles logout | US-002, SEC-04, CRN-43 |
-| **RoleAwareRenderer** | Wraps UI elements and conditionally renders based on `permissions[]` from JWT. Elements without permission not rendered (not merely hidden). All checks mirrored server-side | UH-003, SEC-01, CRN-15 |
+| **RoleAwareRenderer** | Wraps UI elements and conditionally renders based on `permissions[]` from JWT. Elements without permission not rendered (not merely hidden). All checks mirrored server-side | US-003, SEC-01, CRN-15 |
 | **UserManagementView** | Admin interface for user CRUD, role assignment, branch assignment, medical staff attributes. Only rendered for `user:manage` permission | US-001, CRN-15 |
-| **RoleConfigurationView** | Admin interface for role creation and permission assignment. Validates regulatory constraints. Enables MNT-03: new roles in <30 min, zero code changes | MNT-03, UH-003, CRN-15 |
+| **RoleConfigurationView** | Admin interface for role creation and permission assignment. Validates regulatory constraints. Enables MNT-03: new roles in <30 min, zero code changes | MNT-03, US-003, CRN-15 |
 
 ---
 
@@ -656,7 +656,7 @@ All commands emit audit events to the `ImmutableAuditStore`. User management req
 | **CreateUser** | `POST /users` | `fullName`, `email`, `roleId`, `branchAssignments[]` required; `email` unique; medical staff: `specialty`, `residencyLevel`, `supervisorStaffId` (mandatory R1/R2) | US-001, CRN-15 |
 | **UpdateUser** | `PUT /users/:userId` | Supports role change, branch assignment update, medical staff changes. Role change triggers JWT invalidation via TokenDenyList | US-001, CRN-15 |
 | **DeactivateUser** | `POST /users/:userId/deactivate` | Sets `isActive = false`; adds all active tokens to TokenDenyList; emits security audit event | US-001, SEC-04 |
-| **CreateRole** | `POST /roles` | `name` and `permissionIds[]` required; validates regulatory conflicts; `is_system_role = false` for custom roles | MNT-03, UH-003, CRN-15 |
+| **CreateRole** | `POST /roles` | `name` and `permissionIds[]` required; validates regulatory conflicts; `is_system_role = false` for custom roles | MNT-03, US-003, CRN-15 |
 | **UpdateRolePermissions** | `PUT /roles/:roleId/permissions` | `permissionIds[]` required; system roles protected; re-validates constraints; triggers JWT invalidation for affected users | MNT-03, CRN-15 |
 
 ### 8.2 — Identity & Access Query Interfaces
@@ -665,7 +665,7 @@ All commands emit audit events to the `ImmutableAuditStore`. User management req
 |---|---|---|---|
 | **ListUsers** | `GET /users` | Optional: `roleId`, `branchId`, `isActive`; paginated; branch-scoped for non-admin | US-001, CRN-15 |
 | **GetUser** | `GET /users/:userId` | Returns user profile with role, branches, medical staff details | US-001 |
-| **ListRoles** | `GET /roles` | All roles with permission sets; includes `is_system_role` flag | MNT-03, UH-003 |
+| **ListRoles** | `GET /roles` | All roles with permission sets; includes `is_system_role` flag | MNT-03, US-003 |
 | **ListPermissions** | `GET /permissions` | System permission catalog grouped by category; includes `requiresResidencyCheck` | MNT-03, CRN-15 |
 
 ### 8.3 — Audit & Compliance Query Interfaces
@@ -700,7 +700,7 @@ All queries branch-scoped except Director General. Results paginated.
 | CreateUser | US-001, CRN-15 |
 | UpdateUser | US-001, CRN-15 |
 | DeactivateUser | US-001, SEC-04, CRN-17 |
-| CreateRole | MNT-03, UH-003, CRN-15 |
+| CreateRole | MNT-03, US-003, CRN-15 |
 | UpdateRolePermissions | MNT-03, CRN-15 |
 | GetAuditTrailForEntity | CRN-17 |
 | GetAuditTrailForUser | CRN-17, US-066 |
@@ -807,7 +807,7 @@ classDiagram
 | Element | Type | Description | Key Drivers |
 |---|---|---|---|
 | **User** | Entity | Authenticated person in the system. Assigned to branches, granted permissions through a configurable role | US-001, US-002, CRN-15 |
-| **Role** | Entity | Configurable permission set. New roles created by administrators without code changes. `isSystemRole` protects the 11 seeded roles | UH-003, MNT-03, CRN-15 |
+| **Role** | Entity | Configurable permission set. New roles created by administrators without code changes. `isSystemRole` protects the 11 seeded roles | US-003, MNT-03, CRN-15 |
 | **Permission** | Entity | Granular authorization unit with stable string key. `requiresResidencyCheck` triggers ResidencyLevelPolicy delegation | US-003, US-050, SEC-01, MNT-03 |
 | **MedicalStaff** | Entity | User specialization for clinical personnel. Carries residencyLevel and controlled substance authorization. R1/R2 require mandatory supervisor | US-049, US-050, US-051, SEC-01 |
 | **ConsentRecord** | Entity | Tracks patient data consent lifecycle under LFPDPPP. Consent status embedded in JWT for offline verification | CRN-32, US-066 |
@@ -820,7 +820,7 @@ classDiagram
 
 | Driver | Decision | Rationale | Discarded Alternatives |
 |---|---|---|---|
-| **CRN-15, UH-003** | Three-dimensional RBAC: role permissions + branch scoping + residency-level restrictions. 11 initial roles seeded; custom roles via admin UI | Captures all access control requirements in a single coherent model; branch scoping enforces SEC-02; residency dimension is explicit and centrally maintained | ABAC — higher complexity, unjustified; ACL per resource — impractical at 50,000+ records |
+| **CRN-15, US-003** | Three-dimensional RBAC: role permissions + branch scoping + residency-level restrictions. 11 initial roles seeded; custom roles via admin UI | Captures all access control requirements in a single coherent model; branch scoping enforces SEC-02; residency dimension is explicit and centrally maintained | ABAC — higher complexity, unjustified; ACL per resource — impractical at 50,000+ records |
 | **US-002, SEC-04** | Stateless JWT with embedded claims (15-min TTL) + refresh tokens (7-day TTL) + TokenDenyList for immediate revocation | Embedded claims enable offline authorization (CRN-43 rule 3); short TTL limits exposure; deny-list closes revocation gap | Server-side sessions — incompatible with offline; OAuth2 with external IdP — external dependency, no offline introspection |
 | **SEC-01, SEC-04, CRN-13, US-066** | Six-filter security middleware pipeline: TlsVerifier → AuthenticationFilter → AuthorizationFilter → TenantContextInjector → AuditInterceptor → ErrorSanitizer | Single enforcement point; ordering guarantees unauthenticated requests rejected first; all access audited; no internal details leak | Per-endpoint annotations — scattered; Dedicated API gateway — excessive for monolith |
 | **SEC-02** | PostgreSQL RLS as defense-in-depth below application-level filtering. `admin_reporting` role with BYPASSRLS for cross-branch reports | Two-layer enforcement for High/High scenario; RLS prevents data leakage even with application bugs | Application-level WHERE only — single layer, insufficient for SEC-02 |

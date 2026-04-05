@@ -1,9 +1,75 @@
+## Index
+
+### Main sections
+
+- [1. Introduction](#arch-01-intro)
+- [2. Context diagram](#arch-02-context)
+- [3. Architectural drivers](#arch-03-drivers)
+- [4. Domain model](#arch-04-domain)
+- [5. Container diagram](#arch-05-container)
+- [6. Component diagrams](#arch-06-components)
+- [7. Sequence diagrams](#arch-07-seq)
+- [8. Interfaces](#arch-08-interfaces)
+- [9. Design decisions](#arch-09-decisions)
+
+### Section 3 — Architectural drivers (detail)
+
+- [Primary User Stories](#arch-drivers-uh)
+- [Quality Attribute Scenarios — High/High Priority](#arch-drivers-qa)
+- [Technical Constraints](#arch-drivers-con)
+- [High-Priority Architectural Concerns](#arch-drivers-concerns)
+
+### Section 4 — Domain model (detail)
+
+- [Domain Model Element Descriptions](#arch-04-elements)
+- [Clinical Care Domain Model — Iteration 2 Refinement](#arch-04-clinical-care)
+
+### Section 5 — Container diagram (detail)
+
+- [Container Responsibilities](#arch-05-resp)
+
+### Section 6 — Component diagrams (detail)
+
+- [6.1 — SICEB API Server Components](#arch-06-api)
+- [6.2 — SICEB PWA Client Components](#arch-06-pwa)
+
+### Section 7 — Sequence diagrams (detail)
+
+- [SD-01: Authenticated API Request Flow](#arch-sd-01)
+- [SD-02: Branch Context Selection and Tenant Isolation](#arch-sd-02)
+- [SD-03: Create Patient and Medical Record](#arch-sd-03)
+- [SD-04: Add Consultation with Prescriptions and Lab Orders](#arch-sd-04)
+- [SD-05: Enter Lab Results and Project into Medical Record](#arch-sd-05)
+- [SD-06: Search Patient and Load Clinical Timeline](#arch-sd-06)
+- [SD-07: Controlled Medication Prescription Blocked by Residency Policy](#arch-sd-07)
+- [SD-08: Admin Creates New Role](#arch-sd-08)
+- [SD-09: Patient Record Access with LFPDPPP Audit Logging](#arch-sd-09)
+
+### Section 8 — Interfaces (detail)
+
+- [8.1 — Clinical Care Command Interfaces](#arch-08-1)
+- [8.2 — Clinical Care Query Interfaces](#arch-08-2)
+- [8.3 — Identity & Access Command Interfaces](#arch-08-3)
+- [8.4 — Identity & Access Query Interfaces](#arch-08-4)
+- [8.5 — Audit & Compliance Query Interfaces](#arch-08-5)
+- [8.6 — Interface-to-Driver Traceability](#arch-08-6)
+
+### Section 9 — Design decisions (detail)
+
+- [Iteration 1 — Establish Overall System Structure](#arch-iter-1)
+- [Iteration 2 — Core Clinical Workflow and Medical Records](#arch-iter-2)
+- [Iteration 3 — Security, Access Control, and Audit Infrastructure](#arch-iter-3)
+
+---
+
+<a id="arch-01-intro"></a>
 ### 1.- Introduction
 
 This document describes the software architecture of SICEB (Sistema Integral de Control y Expedientes de Bienestar), designed using the Attribute-Driven Design (ADD) method across seven iterations. It captures the architectural decisions, structural views, behavioral diagrams, and design rationale that evolve incrementally — from the foundational system structure through clinical workflows, security, multi-branch operations, pharmacy and payments, offline synchronization, and operational resilience.
 
 The document follows the C4 model for structural views (Context, Container, Component) and uses sequence diagrams to illustrate key behavioral scenarios. Each iteration refines the architecture by addressing a specific set of architectural drivers — user stories, quality attribute scenarios, architectural concerns, and technical constraints — as defined in the iteration plan.
 
+<a id="arch-02-context"></a>
 ### 2.- Context diagram
 
 The following context diagram shows SICEB as a single system interacting with its external actors. Medical and administrative teams at each branch access the system through a Progressive Web App over HTTPS and Secure WebSocket. External systems — academic institutions and future insurance integrations — communicate via a REST API. A future patient portal is planned but out of scope for the current design.
@@ -46,27 +112,30 @@ graph TD
 
 
 
+<a id="arch-03-drivers"></a>
 ### 3.- Architectural drivers
 
 This section summarizes the architectural drivers that guide the design of SICEB. For full details, refer to the Architectural Drivers document.
 
+<a id="arch-drivers-uh"></a>
 #### Primary User Stories
 
 
 | Rank | ID         | Short Name                            | Supported High/High Scenarios |
 | ---- | ---------- | ------------------------------------- | ----------------------------- |
-| 1    | **UH-076** | Offline operation and synchronization | REL-01, REL-02, USA-01        |
-| 2    | **UH-074** | Active branch selection               | SEC-02, ESC-02                |
-| 3    | **UH-071** | Branch registration                   | SEC-02, ESC-02                |
-| 4    | **UH-003** | Role-based permissions                | SEC-02                        |
-| 5    | **UH-026** | Record immutability                   | REL-02                        |
-| 6    | **UH-025** | Add consultation to record            | REL-01, USA-01                |
-| 7    | **UH-004** | Complete inventory view — Admin       | PER-01                        |
-| 8    | **UH-024** | Create clinical record                | USA-01                        |
-| 9    | **UH-031** | Prescribe medications                 | USA-01                        |
-| 10   | **UH-044** | Register payments                     | REL-01                        |
+| 1    | **US-076** | Offline operation and synchronization | REL-01, REL-02, USA-01        |
+| 2    | **US-074** | Active branch selection               | SEC-02, ESC-02                |
+| 3    | **US-071** | Branch registration                   | SEC-02, ESC-02                |
+| 4    | **US-003** | Role-based permissions                | SEC-02                        |
+| 5    | **US-026** | Record immutability                   | REL-02                        |
+| 6    | **US-025** | Add consultation to record            | REL-01, USA-01                |
+| 7    | **US-004** | Complete inventory view — Admin       | PER-01                        |
+| 8    | **US-024** | Create clinical record                | USA-01                        |
+| 9    | **US-031** | Prescribe medications                 | USA-01                        |
+| 10   | **US-044** | Register payments                     | REL-01                        |
 
 
+<a id="arch-drivers-qa"></a>
 #### Quality Attribute Scenarios — High/High Priority
 
 
@@ -80,6 +149,7 @@ This section summarizes the architectural drivers that guide the design of SICEB
 | ESC-02 | Scalability       | Branch growth without performance degradation      |
 
 
+<a id="arch-drivers-con"></a>
 #### Technical Constraints
 
 
@@ -92,6 +162,7 @@ This section summarizes the architectural drivers that guide the design of SICEB
 | **CON-05** | No DICOM/PACS; text-only laboratory results                            |
 
 
+<a id="arch-drivers-concerns"></a>
 #### High-Priority Architectural Concerns
 
 
@@ -109,6 +180,7 @@ This section summarizes the architectural drivers that guide the design of SICEB
 | UX                     | 1     | CRN-39                                                 |
 
 
+<a id="arch-04-domain"></a>
 ### 4.- Domain model
 
 The following domain model captures the core business entities and their relationships derived from SICEB's architectural drivers — including 76 user stories, 6 prioritized quality attribute scenarios, 5 technical constraints, and 35 high-priority architectural concerns. The model reflects the clinical, pharmacy, inventory, financial, scheduling, and administrative domains of a multi-branch medical clinic network operating with offline-first capabilities.
@@ -368,6 +440,7 @@ classDiagram
 
 
 
+<a id="arch-04-elements"></a>
 #### Domain Model Element Descriptions
 
 
@@ -401,9 +474,10 @@ classDiagram
 | **ArcoRequest**       | Entity       | A formal request exercising ARCO rights (Access, Rectification, Cancellation, Opposition) under LFPDPPP. Carries a legal deadline (20 business days), status tracking, and resolution notes. Rectification on immutable clinical records is handled by appending a corrective addendum event rather than modifying the original record, preserving CRN-02 compliance.                                                                                                                                                                                                                              | CRN-32, US-062, US-063                                                 |
 
 
+<a id="arch-04-clinical-care"></a>
 #### Clinical Care Domain Model — Iteration 2 Refinement
 
-The following diagram zooms into the clinical care bounded context, making explicit the **append-only event stream** that enforces medical record immutability (UH-026, CRN-02, AUD-03). Every clinical action — consultation, prescription, laboratory order, result entry, attachment — is persisted as an immutable `ClinicalEvent` linked to the patient's `MedicalRecord`. The write model stores the event stream; the read models (`PatientSearchReadModel`, `ClinicalTimelineReadModel`, `Nom004RecordView`) are projections built from these events to serve queries efficiently (PER-03, CRN-31).
+The following diagram zooms into the clinical care bounded context, making explicit the **append-only event stream** that enforces medical record immutability (US-026, CRN-02, AUD-03). Every clinical action — consultation, prescription, laboratory order, result entry, attachment — is persisted as an immutable `ClinicalEvent` linked to the patient's `MedicalRecord`. The write model stores the event stream; the read models (`PatientSearchReadModel`, `ClinicalTimelineReadModel`, `Nom004RecordView`) are projections built from these events to serve queries efficiently (PER-03, CRN-31).
 
 ```mermaid
 classDiagram
@@ -533,19 +607,20 @@ classDiagram
 | Element                       | Type                    | Description                                                                                                                                                                                                                                                                                                                                                                                     | Key Drivers                            |
 | ----------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | **Patient**                   | Aggregate Root          | The identity anchor for all clinical data. Carries a globally unique `patientId` generated as UUID, ensuring exactly one patient record across all branches. Guardian fields are mandatory when `dateOfBirth` indicates a minor under 17. `creatingBranchId` records provenance for audit and sync.                                                                                             | CRN-37, US-019, US-020, US-023, PER-03 |
-| **MedicalRecord**             | Aggregate Root          | The append-only container for all clinical events belonging to a patient. Once created, no event can be updated or deleted — only new events can be appended. Retention is permanent per NOM-004-SSA3-2012. Serves as the consistency boundary for the clinical event stream.                                                                                                                   | UH-026, CRN-02, CRN-01, CRN-31, AUD-03 |
-| **ClinicalEvent**             | Entity / Event          | The base type for every immutable clinical entry. Each event carries an `idempotencyKey` for safe offline replay and a `branchId` for tenant context. Specialized into Consultation, Prescription, LaboratoryStudy, LaboratoryResult, and Attachment. Events are ordered by `occurredAt` to reconstruct the patient timeline.                                                                   | UH-025, UH-026, CRN-02, CRN-43         |
-| **Consultation**              | Event Specialization    | A clinical encounter appended as an event. Contains diagnosis, notes, vital signs, and optional supervisor reference for R1/R2 residents. Serves as the origin context for prescriptions and lab orders created within the same encounter.                                                                                                                                                      | UH-025, US-025, USA-02, CRN-16         |
-| **Prescription**              | Event Specialization    | A medication order generated within a consultation context. Includes one or more `PrescriptionItem` entries. Lifecycle states track issuance through dispensation. Prescriber permission validation is fully enforced by the `AuthorizationMiddleware` and `ResidencyLevelPolicy` — R1/R2/R3 residents are blocked from prescribing controlled medications before the command handler executes. | UH-031, US-031, US-033                 |
+| **MedicalRecord**             | Aggregate Root          | The append-only container for all clinical events belonging to a patient. Once created, no event can be updated or deleted — only new events can be appended. Retention is permanent per NOM-004-SSA3-2012. Serves as the consistency boundary for the clinical event stream.                                                                                                                   | US-026, CRN-02, CRN-01, CRN-31, AUD-03 |
+| **ClinicalEvent**             | Entity / Event          | The base type for every immutable clinical entry. Each event carries an `idempotencyKey` for safe offline replay and a `branchId` for tenant context. Specialized into Consultation, Prescription, LaboratoryStudy, LaboratoryResult, and Attachment. Events are ordered by `occurredAt` to reconstruct the patient timeline.                                                                   | US-025, US-026, CRN-02, CRN-43         |
+| **Consultation**              | Event Specialization    | A clinical encounter appended as an event. Contains diagnosis, notes, vital signs, and optional supervisor reference for R1/R2 residents. Serves as the origin context for prescriptions and lab orders created within the same encounter.                                                                                                                                                      | US-025, US-025, USA-02, CRN-16         |
+| **Prescription**              | Event Specialization    | A medication order generated within a consultation context. Includes one or more `PrescriptionItem` entries. Lifecycle states track issuance through dispensation. Prescriber permission validation is fully enforced by the `AuthorizationMiddleware` and `ResidencyLevelPolicy` — R1/R2/R3 residents are blocked from prescribing controlled medications before the command handler executes. | US-031, US-031, US-033                 |
 | **PrescriptionItem**          | Value Object            | A single medication line within a prescription: medication reference, quantity, dosage, and instructions. Immutable once the prescription event is appended.                                                                                                                                                                                                                                    | US-031                                 |
 | **LaboratoryStudy**           | Event Specialization    | A lab test order created within a consultation. Tracks lifecycle from request through pending, in-progress, to completed. Results are stored as a separate `LaboratoryResult` event, never as an update to the original order. Text-only results per CON-05.                                                                                                                                    | US-038, US-040, CON-05                 |
 | **LaboratoryResult**          | Event Specialization    | The text-based result entry for a previously ordered laboratory study. Appended as a new clinical event — the original `LaboratoryStudy` event is never modified. Links back to the study via `studyId`.                                                                                                                                                                                        | US-041, US-042, CRN-02                 |
 | **Attachment**                | Event Specialization    | A file reference appended to the medical record as a clinical event. Supports PDFs, images, and scanned documents for external records and informed consent. The file itself is stored externally; the event holds the storage path.                                                                                                                                                            | US-029, US-056, CRN-31                 |
 | **PatientSearchReadModel**    | Read Model / Projection | A denormalized, indexed projection optimized for fast patient lookup by name, date of birth, patient type, and last visit date. Updated asynchronously from clinical events. Indexed for sub-1-second search over 50,000+ records.                                                                                                                                                              | PER-03, US-027                         |
-| **ClinicalTimelineReadModel** | Read Model / Projection | A chronologically ordered projection of all clinical events for a patient, enabling quick rendering of the complete medical history. Pre-computed to avoid expensive joins at query time.                                                                                                                                                                                                       | US-027, UH-025                         |
+| **ClinicalTimelineReadModel** | Read Model / Projection | A chronologically ordered projection of all clinical events for a patient, enabling quick rendering of the complete medical history. Pre-computed to avoid expensive joins at query time.                                                                                                                                                                                                       | US-027, US-025                         |
 | **Nom004RecordView**          | Read Model / Projection | A structured projection that organizes clinical events into the mandatory sections defined by NOM-004-SSA3-2012: patient identification, clinical notes, diagnostics, laboratory summaries, prescriptions, and attachments. Enables automated completeness validation and regulatory reporting.                                                                                                 | CRN-31, AUD-03                         |
 
 
+<a id="arch-05-container"></a>
 ### 5.- Container diagram
 
 The following C4 container diagram decomposes SICEB into its four deployable containers and shows how they interact with external actors. The PWA Client communicates with the API Server over HTTPS/REST and Secure WebSocket. The API Server persists data in the Cloud Database over TLS-encrypted SQL connections. The PWA Client also writes to its own Local Storage via IndexedDB for offline operation.
@@ -572,6 +647,7 @@ graph TB
 
 
 
+<a id="arch-05-resp"></a>
 #### Container Responsibilities
 
 
@@ -583,8 +659,10 @@ graph TB
 | **SICEB Local Storage**  | IndexedDB, Browser Storage           | Caches a subset of cloud data relevant to the user's active branch for offline operation; maintains a sync queue for operations performed while offline; supports cache validation and corruption detection; enforces branch-scoped cache isolation upon branch context switch (PROC-12-FUT); managed by the Service Worker and Local Storage Manager |
 
 
+<a id="arch-06-components"></a>
 ### 6.- Component diagrams
 
+<a id="arch-06-api"></a>
 #### 6.1 — SICEB API Server Components
 
 The API Server is internally organized as a modular monolith following domain-driven decomposition. Modules are grouped into three layers: **Domain Modules** encapsulate business logic for specific bounded contexts, **Platform Modules** provide cross-cutting infrastructure services consumed by all domain modules, and the **Shared Kernel** defines common value types used across the entire codebase. All inter-module dependencies follow a strict acyclic directed graph — solid arrows represent primary domain dependencies, dashed arrows represent read-only or event-based dependencies.
@@ -715,13 +793,13 @@ graph TB
 | Component                      | Side    | Responsibilities                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Key Drivers                            |
 | ------------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | **PatientAggregate**           | Command | Handles `CreatePatient` commands; enforces global uniqueness of `patientId` across branches; validates guardian presence for minors; applies patient type classification and discount rules                                                                                                                                                                                                                                                                                   | CRN-37, US-019, US-020, US-023         |
-| **MedicalRecordAggregate**     | Command | Handles `CreateMedicalRecord` commands; enforces the invariant that exactly one record exists per patient; rejects any update or delete operation on existing events — append-only                                                                                                                                                                                                                                                                                            | UH-026, CRN-02, AUD-03                 |
-| **ConsultationAggregate**      | Command | Handles `AddConsultation` commands; captures diagnosis, notes, vital signs; flags `requiresSupervision` for R1/R2 residents; serves as the transactional context for creating prescriptions and lab orders within the same encounter                                                                                                                                                                                                                                          | UH-025, USA-02, CRN-16                 |
+| **MedicalRecordAggregate**     | Command | Handles `CreateMedicalRecord` commands; enforces the invariant that exactly one record exists per patient; rejects any update or delete operation on existing events — append-only                                                                                                                                                                                                                                                                                            | US-026, CRN-02, AUD-03                 |
+| **ConsultationAggregate**      | Command | Handles `AddConsultation` commands; captures diagnosis, notes, vital signs; flags `requiresSupervision` for R1/R2 residents; serves as the transactional context for creating prescriptions and lab orders within the same encounter                                                                                                                                                                                                                                          | US-025, USA-02, CRN-16                 |
 | **ClinicalEventStore**         | Command | The immutable, append-only persistence layer for all clinical events; assigns sequential ordering per `MedicalRecord`; validates `IdempotencyKey` to prevent duplicate writes during offline sync replay; publishes event notifications to read-side projections and Audit & Compliance                                                                                                                                                                                       | CRN-02, CRN-43, AUD-03                 |
-| **PrescriptionCommandHandler** | Command | Handles `CreatePrescriptionFromConsultation` commands; creates `Prescription` and `PrescriptionItem` events within a consultation context; validates that the consultation exists and is open. Prescriber-level restrictions are enforced upstream by the `AuthorizationMiddleware` and `ResidencyLevelPolicy` (Iteration 3) — R1/R2/R3 residents are blocked from prescribing controlled medications before the handler executes; the handler focuses purely on domain logic | UH-031, US-031, US-050, US-051, SEC-01 |
+| **PrescriptionCommandHandler** | Command | Handles `CreatePrescriptionFromConsultation` commands; creates `Prescription` and `PrescriptionItem` events within a consultation context; validates that the consultation exists and is open. Prescriber-level restrictions are enforced upstream by the `AuthorizationMiddleware` and `ResidencyLevelPolicy` (Iteration 3) — R1/R2/R3 residents are blocked from prescribing controlled medications before the handler executes; the handler focuses purely on domain logic | US-031, US-031, US-050, US-051, SEC-01 |
 | **LabStudyCommandHandler**     | Command | Handles `CreateLabStudiesFromConsultation` and `RecordLabResult` commands; manages the laboratory study lifecycle from order to result; appends `LaboratoryStudy` and `LaboratoryResult` as separate clinical events; results are text-only per CON-05                                                                                                                                                                                                                        | US-038, US-040, US-041, US-042, CON-05 |
 | **PatientSearchReadModel**     | Read    | Denormalized, indexed projection for fast patient lookup; updated from `ClinicalEvent` stream; indexes on `fullName`, `dateOfBirth`, `patientType`, `branch_id`, and `lastVisitDate`; targets sub-1-second response over 50,000+ records                                                                                                                                                                                                                                      | PER-03, US-027                         |
-| **ClinicalTimelineReadModel**  | Read    | Chronologically ordered projection of all clinical events per patient; enables rendering of the complete medical history without expensive runtime joins; updated incrementally as new events arrive                                                                                                                                                                                                                                                                          | US-027, UH-025                         |
+| **ClinicalTimelineReadModel**  | Read    | Chronologically ordered projection of all clinical events per patient; enables rendering of the complete medical history without expensive runtime joins; updated incrementally as new events arrive                                                                                                                                                                                                                                                                          | US-027, US-025                         |
 | **Nom004RecordView**           | Read    | Structured projection organizing events into NOM-004-SSA3-2012 mandatory sections: identification, clinical notes, diagnostics, lab summaries, prescriptions, attachments; supports automated completeness checks and regulatory reporting                                                                                                                                                                                                                                    | CRN-31, AUD-03                         |
 | **PendingLabStudiesReadModel** | Read    | Branch-scoped list of laboratory studies in pending or in-progress status; enables lab technicians to view their work queue filtered by branch and date; updated when `LaboratoryStudy` or `LaboratoryResult` events are appended                                                                                                                                                                                                                                             | US-040                                 |
 
@@ -778,9 +856,9 @@ graph TB
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | **AuthenticationService**   | Validates user credentials against bcrypt-hashed passwords in the `users` table. On success, issues a short-lived JWT access token (15-minute TTL) carrying embedded claims: `userId`, `role`, `residencyLevel`, `branchAssignments[]`, `activeBranchId`, `permissions[]`, and `consentVerifiedScopes[]`. Issues a long-lived refresh token (7-day TTL, stored server-side, revocable). Checks `TokenDenyList` during token validation to reject revoked tokens. Emits audit events for login success, login failure, and token refresh. | US-002, SEC-04, CRN-43         |
 | **TokenDenyList**           | In-memory cache backed by a database table (`token_deny_list`). Stores JTI (JWT ID) of revoked tokens with their original expiry time. Populated when a user is deactivated (all active tokens revoked immediately), when a refresh token is explicitly revoked, or when suspicious activity is detected. Entries are auto-purged after the token's original TTL expires.                                                                                                                                                                | US-001, SEC-04                 |
-| **AuthorizationMiddleware** | Intercepts every API request after authentication. Extracts the permission requirement from route metadata. Evaluates three dimensions: (1) Does the user's role include the required permission? (2) Is the request scoped to a branch the user is assigned to? (3) If `requiresResidencyCheck` is set on the permission, delegates to `ResidencyLevelPolicy`. Rejects with HTTP 403 on any dimension failure. Emits an audit event for every authorization denial.                                                                     | SEC-01, SEC-02, CRN-15, UH-003 |
+| **AuthorizationMiddleware** | Intercepts every API request after authentication. Extracts the permission requirement from route metadata. Evaluates three dimensions: (1) Does the user's role include the required permission? (2) Is the request scoped to a branch the user is assigned to? (3) If `requiresResidencyCheck` is set on the permission, delegates to `ResidencyLevelPolicy`. Rejects with HTTP 403 on any dimension failure. Emits an audit event for every authorization denial.                                                                     | SEC-01, SEC-02, CRN-15, US-003 |
 | **ResidencyLevelPolicy**    | Encodes hierarchical action rules for residency levels R1–R4 and attending physicians, loaded from the `residency_level_rules` database table and cached in memory. Key rules: R1/R2/R3 blocked from `controlled_med:prescribe`; R1/R2 require `supervision:mandatory` on consultations; R4 may prescribe controlled medications with optional review flagging. Evaluated by `AuthorizationMiddleware` for any permission with `requiresResidencyCheck = true`.                                                                          | US-050, US-051, SEC-01         |
-| **RolePermissionModel**     | Data-driven storage of roles, permissions, and role-permission mappings in three database tables. The 11 initial system roles are seeded via migration and protected by `is_system_role` flag. Administrators can create new roles and assign permissions through the admin UI. A validation layer prevents creation of roles that combine `controlled_med:prescribe` with residency levels R1–R3. Permission keys are stable strings categorized by functional area.                                                                    | MNT-03, UH-003, CRN-15         |
+| **RolePermissionModel**     | Data-driven storage of roles, permissions, and role-permission mappings in three database tables. The 11 initial system roles are seeded via migration and protected by `is_system_role` flag. Administrators can create new roles and assign permissions through the admin UI. A validation layer prevents creation of roles that combine `controlled_med:prescribe` with residency levels R1–R3. Permission keys are stable strings categorized by functional area.                                                                    | MNT-03, US-003, CRN-15         |
 | **UserManagementService**   | Handles user lifecycle: create user with role assignment and branch assignments; activate/deactivate users (deactivation adds all active tokens to `TokenDenyList` for immediate revocation); update role and branch assignments. For medical staff, additionally stores `residencyLevel`, `specialty`, and `supervisorStaffId` (mandatory for R1/R2). Emits audit events for every user lifecycle action.                                                                                                                               | US-001, CRN-15                 |
 
 
@@ -867,6 +945,7 @@ graph LR
 | **ErrorSanitizer**        | 6     | Terminal filter that intercepts all error responses — including unhandled exceptions from domain modules. Strips stack traces, internal entity names, database details, and SQL fragments. Returns a standardized error envelope: `{ code, message, correlationId }`. The `correlationId` links to the full internal error in server-side logs for debugging. Validation errors from domain modules are passed through with their user-facing messages intact. | N/A — wraps the response                                                                    | CRN-13, SEC-04                         |
 
 
+<a id="arch-06-pwa"></a>
 #### 6.2 — SICEB PWA Client Components
 
 The PWA Client is organized into five internal components that separate UI rendering, state management, network communication, offline caching, and local persistence.
@@ -941,10 +1020,10 @@ graph TB
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | **PatientSearchView**     | Renders the patient search interface with filters for name, date of birth, and patient type; displays results from `PatientSearchReadModel`; allows selecting a patient to navigate to their medical record                                                                                                                                                                                                               | PER-03, US-019                         |
 | **MedicalRecordView**     | Displays the patient's complete clinical timeline and NOM-004 structured sections; renders consultations, prescriptions, lab results, and attachments in chronological order; provides entry point to start a new consultation                                                                                                                                                                                            | US-027, CRN-31                         |
-| **ConsultationWizard**    | Guides the clinician through a structured multi-step flow: (1) vital signs and diagnosis, (2) prescriptions with medication search, (3) laboratory orders, (4) review and confirmation. Each step validates completeness before advancing. Designed to reduce errors for new residents and enforce NOM-004 data capture. Dispatches commands to `Clinical Care`, `Prescriptions`, and `Laboratory` APIs upon confirmation | UH-024, UH-025, UH-031, US-038, USA-02 |
+| **ConsultationWizard**    | Guides the clinician through a structured multi-step flow: (1) vital signs and diagnosis, (2) prescriptions with medication search, (3) laboratory orders, (4) review and confirmation. Each step validates completeness before advancing. Designed to reduce errors for new residents and enforce NOM-004 data capture. Dispatches commands to `Clinical Care`, `Prescriptions`, and `Laboratory` APIs upon confirmation | US-024, US-025, US-031, US-038, USA-02 |
 | **PendingLabStudiesView** | Shows the branch-scoped list of pending laboratory studies for lab technicians; allows selection of a study to enter results                                                                                                                                                                                                                                                                                              | US-040                                 |
 | **LabResultEntryForm**    | Captures text-only laboratory results for a selected pending study; validates required fields before submission; dispatches `RecordLabResult` command                                                                                                                                                                                                                                                                     | US-041, US-042, CON-05                 |
-| **ClinicalStateManager**  | Maintains the active patient context, consultation wizard state, and validation rules; coordinates command dispatch to the API Client and refreshes read-model data after successful writes; manages optimistic UI updates during the consultation flow                                                                                                                                                                   | USA-02, UH-025                         |
+| **ClinicalStateManager**  | Maintains the active patient context, consultation wizard state, and validation rules; coordinates command dispatch to the API Client and refreshes read-model data after successful writes; manages optimistic UI updates during the consultation flow                                                                                                                                                                   | USA-02, US-025                         |
 
 
 ##### 6.2.2 — PWA Security and Admin Components (Iteration 3)
@@ -985,15 +1064,17 @@ graph TB
 | Component                 | Responsibilities                                                                                                                                                                                                                                                                                                                                                                                                                                        | Key Drivers            |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | **LoginView**             | Renders the login form for credential entry. Displays authentication errors (invalid credentials, account deactivated) without revealing which field is incorrect. On successful authentication, stores the JWT via `SessionManager` and navigates to `BranchSelectionView`.                                                                                                                                                                            | US-002, SEC-04         |
-| **BranchSelectionView**   | Displays the list of branches the user is assigned to (from JWT `branchAssignments` claim). Allows the user to select their active branch, which triggers `POST /session/branch` and scopes all subsequent views. For users assigned to a single branch, auto-selects and skips this screen.                                                                                                                                                            | UH-003, SEC-02         |
+| **BranchSelectionView**   | Displays the list of branches the user is assigned to (from JWT `branchAssignments` claim). Allows the user to select their active branch, which triggers `POST /session/branch` and scopes all subsequent views. For users assigned to a single branch, auto-selects and skips this screen.                                                                                                                                                            | US-003, SEC-02         |
 | **SessionManager**        | Stores the JWT access token in memory (not localStorage) to mitigate XSS-based token theft. Monitors token TTL and triggers automatic refresh via the refresh token before expiry. Detects expired or revoked tokens and redirects to `LoginView`. Exposes the current user context (role, permissions, residency level, active branch) to all other components. Handles logout by clearing in-memory token and revoking the refresh token server-side. | US-002, SEC-04, CRN-43 |
-| **RoleAwareRenderer**     | A higher-order component that wraps UI elements and conditionally renders them based on the user's `permissions[]` from the JWT claims. Elements for which the user lacks permission are not rendered (not merely hidden). This reduces UI clutter and prevents social-engineering attempts. All permission checks are mirrored server-side — `RoleAwareRenderer` is a UX optimization, not a security boundary.                                        | UH-003, SEC-01, CRN-15 |
+| **RoleAwareRenderer**     | A higher-order component that wraps UI elements and conditionally renders them based on the user's `permissions[]` from the JWT claims. Elements for which the user lacks permission are not rendered (not merely hidden). This reduces UI clutter and prevents social-engineering attempts. All permission checks are mirrored server-side — `RoleAwareRenderer` is a UX optimization, not a security boundary.                                        | US-003, SEC-01, CRN-15 |
 | **UserManagementView**    | Admin interface for creating, editing, activating, and deactivating user accounts. Supports role assignment (from data-driven role list), branch assignment (multi-select), and for medical staff: specialty, residency level, and supervisor selection. Only rendered for users with `user:manage` permission.                                                                                                                                         | US-001, CRN-15         |
-| **RoleConfigurationView** | Admin interface for creating new roles and assigning permissions from the system permission catalog. Displays the permission matrix with categories and checkboxes. Validates against regulatory constraints (prevents combining `controlled_med:prescribe` with R1–R3 residency levels). Only rendered for users with `role:manage` permission. Enables MNT-03: new roles operational in under 30 minutes with zero code changes.                      | MNT-03, UH-003, CRN-15 |
+| **RoleConfigurationView** | Admin interface for creating new roles and assigning permissions from the system permission catalog. Displays the permission matrix with categories and checkboxes. Validates against regulatory constraints (prevents combining `controlled_med:prescribe` with R1–R3 residency levels). Only rendered for users with `role:manage` permission. Enables MNT-03: new roles operational in under 30 minutes with zero code changes.                      | MNT-03, US-003, CRN-15 |
 
 
+<a id="arch-07-seq"></a>
 ### 7.- Sequence diagrams
 
+<a id="arch-sd-01"></a>
 #### SD-01: Authenticated API Request Flow (Updated — Iteration 3)
 
 This sequence diagram illustrates the standard lifecycle of any authenticated request in SICEB, now showing the concrete security middleware pipeline introduced in Iteration 3. Every request passes through six ordered filters — TLS verification, JWT authentication with deny-list check, three-dimensional authorization (role + branch + residency level), PostgreSQL RLS tenant context injection, audit interception, and error sanitization — before reaching any domain module.
@@ -1041,6 +1122,7 @@ sequenceDiagram
 
 This flow enforces five cross-cutting concerns on every request: (1) **Transport security** — TLS verification at the application level as defense-in-depth; (2) **Authentication** — JWT validation with deny-list check for immediate token revocation; (3) **Authorization** — three-dimensional evaluation of role permissions, branch assignment, and residency-level restrictions; (4) **Tenant isolation** — PostgreSQL RLS activated via session variable, providing defense-in-depth below application-level filtering; (5) **Audit** — every access is logged to the immutable, hash-chained audit trail. Error sanitization ensures no internal details leak in any response.
 
+<a id="arch-sd-02"></a>
 #### SD-02: Branch Context Selection and Tenant Isolation (Updated — Iteration 3)
 
 This sequence diagram shows how a user authenticates, selects an active branch, and how the tenant context is established for all subsequent operations. Updated in Iteration 3 to show JWT claim embedding (role, permissions, residency level, branch assignments, consent scopes), refresh token issuance, deny-list verification, and PostgreSQL RLS session variable activation.
@@ -1099,6 +1181,7 @@ sequenceDiagram
 
 After branch selection, the `activeBranchId` is embedded in the JWT and set as a PostgreSQL session variable via the `TenantContextInjector` middleware. Row-Level Security policies automatically filter all tenant-scoped tables by this value, providing defense-in-depth below the application-level filtering. The `SessionManager` monitors the JWT TTL and triggers automatic refresh before expiry, maintaining a seamless session without re-authentication.
 
+<a id="arch-sd-03"></a>
 #### SD-03: Create Patient and Medical Record (Iteration 2)
 
 This sequence diagram shows the creation of a new patient and their medical record. The flow enforces global patient uniqueness across branches (CRN-37), guardian validation for minors (US-023), and the creation of the append-only medical record as the first clinical event. An audit event is emitted to prepare for the immutable audit trail designed in Iteration 3.
@@ -1147,6 +1230,7 @@ sequenceDiagram
 
 This flow guarantees that every patient starts with exactly one `MedicalRecord` and that the record is created as an immutable event from the outset. The `IdempotencyKey` ensures safe replay if this command is later executed during offline synchronization.
 
+<a id="arch-sd-04"></a>
 #### SD-04: Add Consultation with Prescriptions and Lab Orders (Iteration 2)
 
 This sequence diagram illustrates the core daily clinical workflow: a physician adds a consultation to an existing patient's medical record, and within the same encounter context, creates prescriptions and laboratory orders. All artifacts are appended as immutable clinical events. The ConsultationWizard guides the physician through the multi-step flow (USA-02).
@@ -1211,6 +1295,7 @@ sequenceDiagram
 
 The entire consultation bundle — diagnosis, prescriptions, and lab orders — is committed as a set of immutable clinical events within a single transactional context. If any step fails, no partial events are persisted. The `IdempotencyKey` on the bundle ensures that offline replay produces the same result without duplicates.
 
+<a id="arch-sd-05"></a>
 #### SD-05: Enter Lab Results and Project into Medical Record (Iteration 2)
 
 This sequence diagram shows how laboratory staff enter text-based results for a pending study and how those results become part of the patient's immutable medical record through a separate `LaboratoryResult` clinical event — the original `LaboratoryStudy` event is never modified.
@@ -1269,6 +1354,7 @@ sequenceDiagram
 
 This flow ensures that laboratory results are always additive — the original order event is never modified, and results are appended as a new `LaboratoryResult` event in the clinical event stream. The result is immediately visible in the patient's `ClinicalTimelineReadModel` and `Nom004RecordView`.
 
+<a id="arch-sd-06"></a>
 #### SD-06: Search Patient and Load Clinical Timeline (Iteration 2)
 
 This sequence diagram shows the read-side flow for searching patients and loading their complete clinical history. Both queries hit dedicated read models optimized for performance (PER-03), not the event store directly.
@@ -1334,6 +1420,7 @@ sequenceDiagram
 
 Both the patient search and timeline queries use pre-computed read models backed by indexed database views, ensuring that even with 50,000+ patient records, the search responds in under 1 second (PER-03). The `Nom004RecordView` is loaded in parallel to provide the regulatory-compliant structured view alongside the chronological timeline.
 
+<a id="arch-sd-07"></a>
 #### SD-07: Controlled Medication Prescription Blocked by Residency Policy (Iteration 3)
 
 This sequence diagram shows the security enforcement path when an R2 resident attempts to prescribe a controlled medication during a consultation. The `AuthorizationFilter` detects the `controlled_med:prescribe` permission requirement, delegates to the `ResidencyLevelPolicy`, and blocks the action. An audit event is emitted to the immutable audit trail, and a sanitized error is returned to the PWA.
@@ -1374,6 +1461,7 @@ sequenceDiagram
 
 This flow demonstrates SEC-01 (100% of restricted actions blocked and logged) and US-051 (R1/R2/R3 blocked from prescribing controlled medications). The `RoleAwareRenderer` in the PWA provides a client-side warning, but the authoritative enforcement happens server-side in the middleware. The audit entry is written synchronously because controlled substance actions are security-critical.
 
+<a id="arch-sd-08"></a>
 #### SD-08: Admin Creates New Role (Iteration 3)
 
 This sequence diagram shows an Administrator creating a new role with specific permissions through the `RoleConfigurationView`, demonstrating MNT-03 — new roles operational in under 30 minutes with zero code changes. The `RolePermissionModel` validates the permission set against regulatory constraints before persisting.
@@ -1421,6 +1509,7 @@ sequenceDiagram
 
 This flow satisfies MNT-03: the administrator creates a fully functional role through the UI, assigns permissions from the system catalog, and the role is immediately available for user assignment. The validation layer prevents creation of roles that violate regulatory constraints.
 
+<a id="arch-sd-09"></a>
 #### SD-09: Patient Record Access with LFPDPPP Audit Logging (Iteration 3)
 
 This sequence diagram shows a physician accessing a patient's clinical timeline, with the `AuditInterceptor` capturing the access event and routing it through the hash-chained `ImmutableAuditStore`. This ensures LFPDPPP compliance by recording who accessed which patient data and when.
@@ -1471,8 +1560,10 @@ sequenceDiagram
 
 This flow demonstrates US-066 (audit log for record access) and CRN-32 (LFPDPPP compliance). The `AuditInterceptor` captures the access event asynchronously to avoid adding latency to the clinical query, while the `ImmutableAuditStore` ensures the entry is hash-chained and tamper-evident. The `GetAccessLogForPatient` query in `AuditQueryService` can later retrieve all access events for a specific patient to support ARCO requests or regulatory audits.
 
+<a id="arch-08-interfaces"></a>
 ### 8.- Interfaces
 
+<a id="arch-08-1"></a>
 #### 8.1 — Clinical Care Command Interfaces (Iteration 2)
 
 The following table describes the command-side interfaces exposed by the Clinical Care, Prescriptions, and Laboratory modules. Each command appends one or more immutable `ClinicalEvent`s to the event store. All commands require a valid JWT token, an active `branch_id` in session context, and a client-generated `IdempotencyKey` for safe offline replay.
@@ -1481,13 +1572,14 @@ The following table describes the command-side interfaces exposed by the Clinica
 | Command                                | Module        | HTTP Verb / Endpoint                                | Input Invariants                                                                                                                                                                                                        | Events Produced                                   | Key Drivers                    |
 | -------------------------------------- | ------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------ |
 | **CreatePatient**                      | Clinical Care | `POST /patients`                                    | `patientId` is UUID; `fullName`, `dateOfBirth`, `type` are required; if age < 17, `guardianName` and `guardianRelationship` are mandatory; `dataConsentGiven` must be explicitly set; no duplicate `patientId` globally | `RECORD_CREATED` via linked `CreateMedicalRecord` | CRN-37, US-019, US-020, US-023 |
-| **CreateMedicalRecord**                | Clinical Care | Invoked internally after `CreatePatient`            | Exactly one record per `patientId`; `recordId` is UUID                                                                                                                                                                  | `RECORD_CREATED`                                  | UH-026, CRN-02, CRN-01         |
-| **AddConsultation**                    | Clinical Care | `POST /consultations`                               | Must reference an existing `recordId`; `diagnosis`, `vitalSigns` required; `requiresSupervision` flag set based on staff residency level; `consultationId` is UUID                                                      | `CONSULTATION`                                    | UH-025, USA-02                 |
-| **CreatePrescriptionFromConsultation** | Prescriptions | `POST /consultations/:consultationId/prescriptions` | Must reference an open consultation; at least one `PrescriptionItem` with valid `medicationId`, `quantity`, `dosage`; `prescriptionId` is UUID                                                                          | `PRESCRIPTION`                                    | UH-031, US-031                 |
+| **CreateMedicalRecord**                | Clinical Care | Invoked internally after `CreatePatient`            | Exactly one record per `patientId`; `recordId` is UUID                                                                                                                                                                  | `RECORD_CREATED`                                  | US-026, CRN-02, CRN-01         |
+| **AddConsultation**                    | Clinical Care | `POST /consultations`                               | Must reference an existing `recordId`; `diagnosis`, `vitalSigns` required; `requiresSupervision` flag set based on staff residency level; `consultationId` is UUID                                                      | `CONSULTATION`                                    | US-025, USA-02                 |
+| **CreatePrescriptionFromConsultation** | Prescriptions | `POST /consultations/:consultationId/prescriptions` | Must reference an open consultation; at least one `PrescriptionItem` with valid `medicationId`, `quantity`, `dosage`; `prescriptionId` is UUID                                                                          | `PRESCRIPTION`                                    | US-031, US-031                 |
 | **CreateLabStudiesFromConsultation**   | Laboratory    | `POST /consultations/:consultationId/lab-studies`   | Must reference an open consultation; at least one study with valid `studyType`; `studyId` is UUID per study                                                                                                             | `LAB_ORDER` per study                             | US-038                         |
 | **RecordLabResult**                    | Laboratory    | `POST /lab-studies/:studyId/results`                | Study must exist and be in `PENDING` or `IN_PROGRESS` status; `resultText` is required and non-empty; `resultId` is UUID                                                                                                | `LAB_RESULT`                                      | US-041, US-042, CON-05         |
 
 
+<a id="arch-08-2"></a>
 #### 8.2 — Clinical Care Query Interfaces (Iteration 2)
 
 The following table describes the read-side interfaces. Each query is served by a dedicated read model optimized for its access pattern. Queries do not modify the event store.
@@ -1496,11 +1588,12 @@ The following table describes the read-side interfaces. Each query is served by 
 | Query                          | Read Model                   | HTTP Verb / Endpoint                | Parameters                                                              | Performance / Consistency                                                                                                            | Key Drivers    |
 | ------------------------------ | ---------------------------- | ----------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
 | **SearchPatients**             | `PatientSearchReadModel`     | `GET /patients/search`              | `q` (name substring), `dateOfBirth`, `type`, `branch_id` (from session) | Sub-1-second over 50,000+ records; indexed on `fullName`, `dateOfBirth`, `type`, `branch_id`; eventually consistent with write model | PER-03, US-027 |
-| **GetPatientClinicalTimeline** | `ClinicalTimelineReadModel`  | `GET /patients/:patientId/timeline` | `patientId`; optional date range filters                                | Pre-computed chronological projection; paginated for large histories; eventually consistent                                          | US-027, UH-025 |
+| **GetPatientClinicalTimeline** | `ClinicalTimelineReadModel`  | `GET /patients/:patientId/timeline` | `patientId`; optional date range filters                                | Pre-computed chronological projection; paginated for large histories; eventually consistent                                          | US-027, US-025 |
 | **GetNom004Record**            | `Nom004RecordView`           | `GET /patients/:patientId/nom004`   | `patientId`                                                             | Structured projection with mandatory NOM-004 sections; validates completeness; eventually consistent                                 | CRN-31, AUD-03 |
 | **ListPendingLabStudies**      | `PendingLabStudiesReadModel` | `GET /lab-studies/pending`          | `branch_id` (from session); optional `status` filter                    | Branch-scoped; sorted by `requestedAt` ascending; eventually consistent                                                              | US-040         |
 
 
+<a id="arch-08-3"></a>
 #### 8.3 — Identity & Access Command Interfaces (Iteration 3)
 
 The following table describes the command-side interfaces exposed by the Identity & Access module. All commands emit audit events to the `ImmutableAuditStore`. User management commands require `user:manage` permission; role management commands require `role:manage` permission.
@@ -1514,10 +1607,11 @@ The following table describes the command-side interfaces exposed by the Identit
 | **CreateUser**            | `POST /users`                    | `fullName`, `email`, `roleId`, `branchAssignments[]` required; `email` must be unique; for medical staff: `specialty`, `residencyLevel`, `supervisorStaffId` (mandatory for R1/R2). Password set via secure initial flow. | US-001, CRN-15         |
 | **UpdateUser**            | `PUT /users/:userId`             | Supports role change, branch assignment update, medical staff attribute changes. Role change triggers JWT invalidation via `TokenDenyList`.                                                                               | US-001, CRN-15         |
 | **DeactivateUser**        | `POST /users/:userId/deactivate` | Sets `isActive = false`; adds all active tokens to `TokenDenyList` for immediate revocation; emits security audit event.                                                                                                  | US-001, SEC-04         |
-| **CreateRole**            | `POST /roles`                    | `name` and `permissionIds[]` required; validates no regulatory conflicts (e.g., `controlled_med:prescribe` cannot be combined with R1–R3 residency-level constraints); `is_system_role = false` for custom roles.         | MNT-03, UH-003, CRN-15 |
+| **CreateRole**            | `POST /roles`                    | `name` and `permissionIds[]` required; validates no regulatory conflicts (e.g., `controlled_med:prescribe` cannot be combined with R1–R3 residency-level constraints); `is_system_role = false` for custom roles.         | MNT-03, US-003, CRN-15 |
 | **UpdateRolePermissions** | `PUT /roles/:roleId/permissions` | `permissionIds[]` required; system roles cannot be deleted but their permissions can be updated; re-validates regulatory constraints; triggers JWT invalidation for all users with this role.                             | MNT-03, CRN-15         |
 
 
+<a id="arch-08-4"></a>
 #### 8.4 — Identity & Access Query Interfaces (Iteration 3)
 
 
@@ -1525,10 +1619,11 @@ The following table describes the command-side interfaces exposed by the Identit
 | ------------------- | -------------------- | ------------------------------------------------------------------------------------------------- | -------------- |
 | **ListUsers**       | `GET /users`         | Optional filters: `roleId`, `branchId`, `isActive`; paginated; branch-scoped for non-admin roles  | US-001, CRN-15 |
 | **GetUser**         | `GET /users/:userId` | Returns user profile with role, branch assignments, and medical staff details if applicable       | US-001         |
-| **ListRoles**       | `GET /roles`         | Returns all roles with their permission sets; includes `is_system_role` flag                      | MNT-03, UH-003 |
+| **ListRoles**       | `GET /roles`         | Returns all roles with their permission sets; includes `is_system_role` flag                      | MNT-03, US-003 |
 | **ListPermissions** | `GET /permissions`   | Returns the system permission catalog grouped by category; includes `requiresResidencyCheck` flag | MNT-03, CRN-15 |
 
 
+<a id="arch-08-5"></a>
 #### 8.5 — Audit & Compliance Query Interfaces (Iteration 3)
 
 The following table describes the read-side interfaces exposed by the Audit & Compliance module. All queries are branch-scoped except for Director General role which can query cross-branch. Results are paginated.
@@ -1542,19 +1637,20 @@ The following table describes the read-side interfaces exposed by the Audit & Co
 | **VerifyChainIntegrity**   | `GET /audit/verify`                       | `fromEntryId`, `toEntryId`; walks the SHA-256 hash chain and reports any discontinuities               | CRN-18         |
 
 
+<a id="arch-08-6"></a>
 #### 8.6 — Interface-to-Driver Traceability
 
 
 | Interface                          | Drivers Addressed                              |
 | ---------------------------------- | ---------------------------------------------- |
 | CreatePatient                      | CRN-37, US-019, US-020, US-023, CRN-02         |
-| CreateMedicalRecord                | UH-026, CRN-02, CRN-01, CRN-31, AUD-03         |
-| AddConsultation                    | UH-025, USA-02, CRN-16, CRN-43                 |
-| CreatePrescriptionFromConsultation | UH-031, US-031, US-033, US-050, US-051, SEC-01 |
+| CreateMedicalRecord                | US-026, CRN-02, CRN-01, CRN-31, AUD-03         |
+| AddConsultation                    | US-025, USA-02, CRN-16, CRN-43                 |
+| CreatePrescriptionFromConsultation | US-031, US-031, US-033, US-050, US-051, SEC-01 |
 | CreateLabStudiesFromConsultation   | US-038, CON-05                                 |
 | RecordLabResult                    | US-041, US-042, CON-05, CRN-02                 |
 | SearchPatients                     | PER-03, US-027                                 |
-| GetPatientClinicalTimeline         | US-027, UH-025, CRN-31, US-066                 |
+| GetPatientClinicalTimeline         | US-027, US-025, CRN-31, US-066                 |
 | GetNom004Record                    | CRN-31, AUD-03, US-066                         |
 | ListPendingLabStudies              | US-040                                         |
 | Login                              | US-002, SEC-04, CRN-17                         |
@@ -1563,7 +1659,7 @@ The following table describes the read-side interfaces exposed by the Audit & Co
 | CreateUser                         | US-001, CRN-15                                 |
 | UpdateUser                         | US-001, CRN-15                                 |
 | DeactivateUser                     | US-001, SEC-04, CRN-17                         |
-| CreateRole                         | MNT-03, UH-003, CRN-15                         |
+| CreateRole                         | MNT-03, US-003, CRN-15                         |
 | UpdateRolePermissions              | MNT-03, CRN-15                                 |
 | GetAuditTrailForEntity             | CRN-17                                         |
 | GetAuditTrailForUser               | CRN-17, US-066                                 |
@@ -1571,8 +1667,10 @@ The following table describes the read-side interfaces exposed by the Audit & Co
 | VerifyChainIntegrity               | CRN-18                                         |
 
 
+<a id="arch-09-decisions"></a>
 ### 9.- Design decisions
 
+<a id="arch-iter-1"></a>
 #### Iteration 1 — Establish Overall System Structure
 
 
@@ -1592,26 +1690,28 @@ The following table describes the read-side interfaces exposed by the Audit & Co
 | **CRN-43** | Establish four mandatory offline-aware design conventions for all modules: (1) UUID-only identifiers via `EntityId` — no auto-increment sequences; (2) idempotent write operations with client-generated idempotency keys; (3) business validations executable against locally cached data (JWT + IndexedDB); (4) inventory mutations modeled as intent-based delta commands, not absolute state transfers. Enforced via automated architecture tests in the CI pipeline (e.g., ArchUnit) that reject violations without manual intervention | Ensures all modules built in Iterations 2–5 are inherently compatible with offline synchronization; eliminates costly data-layer retrofit in Iteration 6; delta commands enable deterministic conflict resolution for concurrent branch operations; CI enforcement prevents convention erosion over 4 iterations | No conventions (defer all offline concerns to Iteration 6) — high risk of expensive retrofit across all modules; Full offline implementation in Iteration 1 — premature without domain models to validate sync strategies against; Manual code review only — insufficient for sustained discipline across 4 iterations |
 
 
+<a id="arch-iter-2"></a>
 #### Iteration 2 — Core Clinical Workflow and Medical Records
 
 
 | Driver                             | Decision                                                                                                                                                                                                                                                                                                       | Rationale                                                                                                                                                                                                                                                                                                                                       | Discarded Alternatives                                                                                                                                                                                                                                                                                |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **UH-026, CRN-02, AUD-03**         | Adopt an append-only clinical event stream (`ClinicalEvent`) as the authoritative write model for medical records. Every clinical action — consultation, prescription, lab order, lab result, attachment — is persisted as an immutable event. No updates or deletes are permitted on clinical events          | Enforces immutability at the deepest architectural layer, satisfying NOM-004 permanent retention (CRN-01) and 100% modification-attempt blocking (AUD-03). Aligns with the idempotent, command-based offline conventions established in Iteration 1 (CRN-43). Enables full auditability without a separate audit mechanism for clinical data    | Update-in-place CRUD with application-level immutability checks — weaker guarantee, bypassed by direct DB access; Soft-delete with `is_active` flag — still allows logical mutation, complicates compliance proof                                                                                     |
+| **US-026, CRN-02, AUD-03**         | Adopt an append-only clinical event stream (`ClinicalEvent`) as the authoritative write model for medical records. Every clinical action — consultation, prescription, lab order, lab result, attachment — is persisted as an immutable event. No updates or deletes are permitted on clinical events          | Enforces immutability at the deepest architectural layer, satisfying NOM-004 permanent retention (CRN-01) and 100% modification-attempt blocking (AUD-03). Aligns with the idempotent, command-based offline conventions established in Iteration 1 (CRN-43). Enables full auditability without a separate audit mechanism for clinical data    | Update-in-place CRUD with application-level immutability checks — weaker guarantee, bypassed by direct DB access; Soft-delete with `is_active` flag — still allows logical mutation, complicates compliance proof                                                                                     |
 | **PER-03, US-027**                 | Introduce CQRS in the Clinical Care bounded context: command side appends events to `ClinicalEventStore`; read side maintains dedicated projections — `PatientSearchReadModel`, `ClinicalTimelineReadModel`, `Nom004RecordView`, `PendingLabStudiesReadModel` — backed by indexed database views               | Separates the immutable write model from query-optimized read models, enabling sub-1-second patient search over 50,000+ records without compromising append-only integrity. Read models can evolve independently (e.g., new NOM-004 sections) without touching the event schema                                                                 | Single unified model for reads and writes — forces trade-off between write simplicity and read performance; Full event sourcing with runtime projection — higher infrastructure complexity for the current team size and data volume                                                                  |
 | **CRN-31**                         | Represent NOM-004-SSA3-2012 mandatory sections as a structured projection (`Nom004RecordView`) generated from clinical events, with explicit section types: patient identification, clinical notes, diagnostics, laboratory summaries, prescriptions, attachments                                              | Makes regulatory compliance a first-class architectural element rather than an implicit UI convention. Enables automated completeness validation — the system can verify that a record has all mandatory NOM-004 sections before it is considered complete. Projection can be regenerated if regulations change, without altering stored events | Free-form text fields with no structural enforcement — impossible to automate compliance verification; Hard-coded screen layouts representing NOM-004 — brittle, UI-coupled, not auditable at the data layer                                                                                          |
 | **CRN-37**                         | Implement a global `PatientId` based on UUID via the Shared Kernel `EntityId` type, enforced by the `PatientAggregate` which validates uniqueness across all branches before persisting                                                                                                                        | Guarantees exactly one medical record per patient across the entire clinic network, regardless of which branch registers the patient. Compatible with offline ID generation (UUIDs can be created client-side without server coordination). Enables future patient search and history consolidation across branches                             | Auto-increment integer IDs per branch — collisions when merging offline data from multiple branches; Composite natural keys based on demographics — brittle, error-prone with name changes or corrections; Centralized sequence server — single point of failure, incompatible with offline operation |
 | **CRN-01**                         | Define data retention policy for clinical records: permanent retention (no deletion, no archival) for all clinical events; retention metadata encoded in the `MedicalRecord` aggregate as a non-nullable policy marker                                                                                         | Satisfies NOM-004-SSA3-2012 requirement for permanent medical record retention. Combined with append-only event store, guarantees that no clinical data can be lost through application or database operations. Storage growth is managed through read-model pruning and database partitioning, not event deletion                              | Time-based archival after N years — violates NOM-004 permanent retention mandate; Soft-delete with recovery window — still implies eventual deletion, non-compliant                                                                                                                                   |
 | **USA-02**                         | Implement a guided multi-step consultation wizard (`ConsultationWizard`) in the PWA that structures the clinical encounter into four sequential steps: vital signs and diagnosis, prescriptions, laboratory orders, review and confirmation                                                                    | Reduces cognitive load for new residents (R1–R4) by enforcing a structured workflow that mirrors the NOM-004 clinical record sections. Each step validates completeness before allowing progression, reducing data entry errors. The wizard mirrors the back-end aggregate structure, ensuring UI and domain model alignment                    | Unstructured forms per screen — higher error rate, weaker NOM-004 alignment, poor onboarding experience; Single long form — overwhelming for new users, no progressive validation                                                                                                                     |
-| **UH-024, UH-025, UH-031, US-038** | Structure the Clinical Care, Prescriptions, and Laboratory modules as DDD aggregates (`PatientAggregate`, `MedicalRecordAggregate`, `ConsultationAggregate`) with clear transactional boundaries; prescriptions and lab orders are created within a consultation context and committed as atomic event bundles | Aggregates enforce clinical invariants at the domain level: one record per patient, append-only record, consultation as the origin for all clinical artifacts. Atomic event bundles prevent partial consultation data. Clear aggregate boundaries enable independent module testing and future independent scaling                              | Anemic domain model with transaction scripts — business rules scattered across services, harder to reason about invariants; Entity-per-table with no aggregate boundaries — foreign-key spaghetti, weak invariant enforcement, unclear transactional scope                                            |
+| **US-024, US-025, US-031, US-038** | Structure the Clinical Care, Prescriptions, and Laboratory modules as DDD aggregates (`PatientAggregate`, `MedicalRecordAggregate`, `ConsultationAggregate`) with clear transactional boundaries; prescriptions and lab orders are created within a consultation context and committed as atomic event bundles | Aggregates enforce clinical invariants at the domain level: one record per patient, append-only record, consultation as the origin for all clinical artifacts. Atomic event bundles prevent partial consultation data. Clear aggregate boundaries enable independent module testing and future independent scaling                              | Anemic domain model with transaction scripts — business rules scattered across services, harder to reason about invariants; Entity-per-table with no aggregate boundaries — foreign-key spaghetti, weak invariant enforcement, unclear transactional scope                                            |
 | **AUD-03, CRN-17**                 | Wire all clinical write operations to emit audit events to the `Audit & Compliance` platform module via the `ClinicalEventStore`, even though the full audit infrastructure is designed in Iteration 3                                                                                                         | Ensures that from the first clinical transaction, every modification attempt is logged. When Iteration 3 designs the full immutable audit trail, the clinical event emission hooks are already in place — no retrofit needed. The `ClinicalEventStore` serves as both the source of truth for clinical data and the event publisher for audit   | Defer all audit emission to Iteration 3 — creates a gap where early clinical transactions are unaudited; risks missing audit entries if hooks are not retroactively applied to all command paths                                                                                                      |
 | **PER-03**                         | Create dedicated database indexes on `PatientSearchReadModel`: composite B-tree indexes on `fullName`, `dateOfBirth`, `patientType`, `branch_id`, and `lastVisitDate`; partial indexes per branch for high-selectivity queries; PostgreSQL `pg_trgm` extension for trigram-based name similarity search        | Directly addresses the sub-1-second search requirement over 50,000+ records. Trigram indexes support partial name matching without full-text search infrastructure. Partial indexes per branch reduce index size and improve cache hit rates in the multi-tenant model                                                                          | No dedicated indexes — unacceptable scan-based search performance; External search engine like Elasticsearch — operational overhead disproportionate to data volume at this stage; Full-text search via PostgreSQL `tsvector` — overkill for name-based search, higher index maintenance cost         |
 
+<a id="arch-iter-3"></a>
 #### Iteration 3 — Security, Access Control, and Audit Infrastructure
 
 | Driver | Decision | Rationale | Discarded Alternatives |
 |---|---|---|---|
-| **CRN-15, UH-003** | Implement three-dimensional RBAC: role-based permissions, branch-scoped data access, and residency-level clinical action restrictions. Permission checks evaluate all three dimensions on every request via the `AuthorizationMiddleware`. 11 initial roles seeded; custom roles creatable through admin UI | Captures all access control requirements in a single coherent model. Branch scoping enforces SEC-02 at the authorization layer. Residency-level dimension is explicit and centrally maintained, not scattered across modules. Supports the full range from Director General (cross-branch) to R1 Resident (most restricted) | ABAC (Attribute-Based Access Control) — significantly higher complexity for a team this size; policy language overhead unjustified when roles are well-defined. ACL per resource — impractical at 50,000+ patient records scale |
+| **CRN-15, US-003** | Implement three-dimensional RBAC: role-based permissions, branch-scoped data access, and residency-level clinical action restrictions. Permission checks evaluate all three dimensions on every request via the `AuthorizationMiddleware`. 11 initial roles seeded; custom roles creatable through admin UI | Captures all access control requirements in a single coherent model. Branch scoping enforces SEC-02 at the authorization layer. Residency-level dimension is explicit and centrally maintained, not scattered across modules. Supports the full range from Director General (cross-branch) to R1 Resident (most restricted) | ABAC (Attribute-Based Access Control) — significantly higher complexity for a team this size; policy language overhead unjustified when roles are well-defined. ACL per resource — impractical at 50,000+ patient records scale |
 | **US-002, SEC-04** | Stateless JWT authentication with embedded claims (userId, role, permissions, residencyLevel, branchAssignments, activeBranchId, consentScopes). Short-lived access tokens (15-min TTL) with long-lived refresh tokens (7-day TTL). `TokenDenyList` for immediate revocation of deactivated-user tokens | Embedded claims enable offline authorization per CRN-43 rule (3) — no server round-trip needed. Short TTL limits exposure window. Deny-list closes the revocation gap for deactivated users. Standard format with broad tooling support | Server-side sessions with session ID cookie — requires server-side session store, incompatible with offline authorization. OAuth2 with external IdP — external dependency, no offline token introspection, operational complexity for a private clinic |
 | **SEC-01, SEC-04, CRN-13, US-066** | Define a six-filter security middleware pipeline applied to every API request in strict order: TlsVerifier → AuthenticationFilter → AuthorizationFilter → TenantContextInjector → AuditInterceptor → ErrorSanitizer. Each filter has a single responsibility and can short-circuit the chain | Single enforcement point — security cannot be accidentally bypassed by individual endpoints. Ordering guarantees unauthenticated requests are rejected first, unauthorized requests never reach domain modules, all access is audited, and no internal details leak in responses. Each filter is independently testable | Per-endpoint security annotations only — scattered enforcement, a missing annotation silently exposes an endpoint, no centralized audit interception. Dedicated API gateway as a separate process — operational overhead disproportionate for a modular monolith |
 | **SEC-02** | Add PostgreSQL Row-Level Security (RLS) policies on all tenant-scoped tables as a defense-in-depth layer below application-level filtering. RLS policies filter by `app.current_branch_id` session variable set by the `TenantContextInjector` middleware. A separate `admin_reporting` role with `BYPASSRLS` is restricted to the Reporting module for cross-branch reports | Even if application code has a bug that omits the `branch_id` WHERE clause, RLS prevents cross-branch data leakage. Two-layer enforcement provides the guarantee required by a High/High quality attribute scenario. The `admin_reporting` bypass enables consolidated reporting without violating the security model | Application-level WHERE clause only (Iteration 1 baseline) — single enforcement layer; a missed filter in one query exposes cross-branch data. Insufficient as the sole mechanism for SEC-02 (High/High scenario) |

@@ -5,14 +5,14 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 **Criteria for iteration ordering:**
 
 1. The first iteration establishes the overall system structure (greenfield, top-down decomposition).
-2. Subsequent iterations prioritize the primary user stories (UH primarias) and their associated high/high quality attribute scenarios, addressing those that directly support the four business objectives (Gestión de Clientes, Gestión de Inventario, Gestión Financiera, Gestión de Personal) in early iterations.
+2. Subsequent iterations prioritize the primary user stories (top-ranked US) and their associated high/high quality attribute scenarios, addressing those that directly support the four business objectives (Gestión de Clientes, Gestión de Inventario, Gestión Financiera, Gestión de Personal) in early iterations.
 3. Cross-cutting concerns (security, offline capability) are addressed as soon as the elements they affect are defined.
 4. Integration and extensibility concerns are deferred to later iterations since they target future releases.
 
 **Driver sources:**
 
-- **UH-xxx**: Primary user stories ranked by QA scenario support (from ArchitecturalDrivers.md)
-- **US-xxx**: User stories with their priority level (from Table_US.md)
+- **US-xxx**: Top-ranked primary user stories by QA scenario support (from ArchitecturalDrivers.md)
+- **US-xxx**: User stories with explicit priority level (from Table_US.md)
 - **QA scenarios** (PER, SEC, REL, USA, ESC, AUD, MNT, IOP): Quality attribute scenarios (from Quality_Attribute_Scenarios.md)
 - **CRN-xx**: High-priority architectural concerns (from ArchitecturalDrivers.md)
 - **CON-xx**: Technical constraints (from ArchitecturalDrivers.md)
@@ -25,11 +25,11 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 | #     | Goal                                                                                                                                                                                                                                                                                                                                                                                                              | Drivers Addressed                                                                                                                                      |
 | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **1** | **Establish overall system structure** — Define the high-level system decomposition (PWA frontend, REST API backend, cloud database, local offline storage), allocate the 18 epics into cohesive modules, establish inter-module dependency rules, the multi-branch single-deployment model, foundational technical conventions, and offline-aware design conventions that all subsequent iterations must follow. | CRN-25, CRN-26, CRN-27, CRN-29, CRN-41, CRN-42, CRN-43, CON-01, CON-02, CON-03, CON-04, CON-05                                                         |
-| **2** | **Core clinical workflow and medical records** *(Gestión de Clientes)* — Enable patient registration, clinical record creation, consultation recording, prescribing, and laboratory study tracking. Enforce medical record immutability and NOM-004 compliance. This is the highest business-value stream: without clinical care, the clinic does not operate.                                                    | UH-024, UH-025, UH-026, UH-031, US-019, US-020, US-023, US-027, US-038, US-040, US-041, US-042, PER-03, USA-02, AUD-03, CRN-02, CRN-01, CRN-31, CRN-37 |
-| **3** | **Security, access control, and audit infrastructure** *(Gestión de Personal)* — Implement authentication, role-based access control for 11 roles with branch-scoped and residency-level permissions, REST API protection, personal data handling (LFPDPPP), and the centralized immutable audit trail that downstream iterations depend on.                                                                      | UH-003, US-001, US-002, US-050, US-051, US-066, SEC-01, SEC-02, SEC-04, MNT-03, CRN-15, CRN-13, CRN-17, CRN-18, CRN-32                                 |
-| **4** | **Multi-branch operations and inventory management** *(Gestión de Inventario)* — Enable branch registration, active branch selection, branch-scoped inventory views, and real-time inventory updates across branches. Validate the multi-tenant scalability model for network growth. Adopt command/delta-based inventory mutations to prepare for offline conflict resolution.                                   | UH-071, UH-074, UH-004, US-004, US-005, US-064, PER-01, ESC-01, ESC-02, ESC-03, CRN-24, CRN-35, CRN-44                                                 |
-| **5** | **Pharmacy, payments, and regulatory compliance** *(Gestión Financiera)* — Enable pharmacy dispensation with prescription validation, controlled substance traceability for COFEPRIS, payment registration, supply request approval workflows, and the asynchronous business compensation protocol for offline regulatory violations.                                                                             | UH-044, US-032, US-033, US-034, US-035, US-044, PER-04, SEC-03, AUD-01, AUD-02, USA-04, CRN-33, CRN-14, CRN-45                                         |
-| **6** | **Offline-first architecture and synchronization** — Enable the PWA to operate fully offline, transition transparently between modes, and synchronize data reliably upon reconnection — including conflict resolution, partial failure recovery, offline ID generation, cache corruption detection, and offline-specific business rule enforcement.                                                               | UH-076, REL-01, REL-02, USA-01, REL-04, CRN-21, CRN-34, CRN-36, CRN-38, CRN-05, CRN-16, CRN-39                                                         |
+| **2** | **Core clinical workflow and medical records** *(Gestión de Clientes)* — Enable patient registration, clinical record creation, consultation recording, prescribing, and laboratory study tracking. Enforce medical record immutability and NOM-004 compliance. This is the highest business-value stream: without clinical care, the clinic does not operate.                                                    | US-024, US-025, US-026, US-031, US-019, US-020, US-023, US-027, US-038, US-040, US-041, US-042, PER-03, USA-02, AUD-03, CRN-02, CRN-01, CRN-31, CRN-37 |
+| **3** | **Security, access control, and audit infrastructure** *(Gestión de Personal)* — Implement authentication, role-based access control for 11 roles with branch-scoped and residency-level permissions, REST API protection, personal data handling (LFPDPPP), and the centralized immutable audit trail that downstream iterations depend on.                                                                      | US-003, US-001, US-002, US-050, US-051, US-066, SEC-01, SEC-02, SEC-04, MNT-03, CRN-15, CRN-13, CRN-17, CRN-18, CRN-32                                 |
+| **4** | **Multi-branch operations and inventory management** *(Gestión de Inventario)* — Enable branch registration, active branch selection, branch-scoped inventory views, and real-time inventory updates across branches. Validate the multi-tenant scalability model for network growth. Adopt command/delta-based inventory mutations to prepare for offline conflict resolution.                                   | US-071, US-074, US-004, US-004, US-005, US-064, PER-01, ESC-01, ESC-02, ESC-03, CRN-24, CRN-35, CRN-44                                                 |
+| **5** | **Pharmacy, payments, and regulatory compliance** *(Gestión Financiera)* — Enable pharmacy dispensation with prescription validation, controlled substance traceability for COFEPRIS, payment registration, supply request approval workflows, and the asynchronous business compensation protocol for offline regulatory violations.                                                                             | US-044, US-032, US-033, US-034, US-035, US-044, PER-04, SEC-03, AUD-01, AUD-02, USA-04, CRN-33, CRN-14, CRN-45                                         |
+| **6** | **Offline-first architecture and synchronization** — Enable the PWA to operate fully offline, transition transparently between modes, and synchronize data reliably upon reconnection — including conflict resolution, partial failure recovery, offline ID generation, cache corruption detection, and offline-specific business rule enforcement.                                                               | US-076, REL-01, REL-02, USA-01, REL-04, CRN-21, CRN-34, CRN-36, CRN-38, CRN-05, CRN-16, CRN-39                                                         |
 | **7** | **Financial reporting, integrations, and operational resilience** — Implement consolidated financial reporting, external system integrations (academic, CFDI), API versioning, fault isolation between modules, database migration strategy, and backup/recovery targets.                                                                                                                                         | PER-02, REL-03, MNT-01, MNT-02, USA-03, IOP-01, IOP-02, CRN-04, CRN-06, CRN-08, CRN-09, CRN-11, CRN-19                                                 |
 
 
@@ -43,7 +43,7 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 | Aspect        | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**      | Define the high-level decomposition of SICEB into containers and modules, establishing technology choices, interaction patterns, the multi-branch tenant model, cross-cutting technical conventions, and offline-aware design conventions that all subsequent iterations will refine and inherit.                                                                                                                                                                                                                                                                                                                                                    |
-| **Rationale** | This is a greenfield system. No design decisions can be made about individual quality attributes or user stories until the fundamental architecture (layers, containers, module boundaries) is in place. All five technical constraints are addressed here since they shape the technology stack. Additionally, because offline synchronization (UH-076) is the highest-ranked driver and a deep cross-cutting concern, mandatory design conventions must be established now so that modules built in Iterations 2–5 are inherently compatible with offline operation, avoiding costly retrofit when Iteration 6 designs the detailed sync protocol. |
+| **Rationale** | This is a greenfield system. No design decisions can be made about individual quality attributes or user stories until the fundamental architecture (layers, containers, module boundaries) is in place. All five technical constraints are addressed here since they shape the technology stack. Additionally, because offline synchronization (US-076) is the highest-ranked driver and a deep cross-cutting concern, mandatory design conventions must be established now so that modules built in Iterations 2–5 are inherently compatible with offline operation, avoiding costly retrofit when Iteration 6 designs the detailed sync protocol. |
 
 
 
@@ -72,16 +72,16 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**               | Design the clinical care modules that represent the primary business value stream: patient management, medical consultations, prescribing, laboratory study tracking, and the immutable clinical record.                                                                                                                                                                                                                                  |
 | **Business objective** | **Gestión de Clientes** — Maintain centralized digital records with complete care history.                                                                                                                                                                                                                                                                                                                                                |
-| **Rationale**          | The clinic's core revenue comes from patient consultations. The clinical record is the most regulated artifact (NOM-004-SSA3-2012) and the most architecturally constrained (append-only, permanent retention). Addressing this early ensures the data model is correct before downstream modules (pharmacy, laboratory, payments) depend on it. This iteration covers 4 of the 10 primary user stories (UH-024, UH-025, UH-026, UH-031). |
+| **Rationale**          | The clinic's core revenue comes from patient consultations. The clinical record is the most regulated artifact (NOM-004-SSA3-2012) and the most architecturally constrained (append-only, permanent retention). Addressing this early ensures the data model is correct before downstream modules (pharmacy, laboratory, payments) depend on it. This iteration covers 4 of the 10 primary user stories (US-024, US-025, US-026, US-031). |
 
 
 
 | Driver | Type                | Why this iteration                                                                |
 | ------ | ------------------- | --------------------------------------------------------------------------------- |
-| UH-024 | Primary UH (rank 8) | Create clinical record — entry point for all patient care                         |
-| UH-025 | Primary UH (rank 6) | Add consultation to record — the daily core operation; supports REL-01, USA-01    |
-| UH-026 | Primary UH (rank 5) | Record immutability — must be enforced from the data model layer; supports REL-02 |
-| UH-031 | Primary UH (rank 9) | Prescribe medications — consultations generate prescriptions; supports USA-01     |
+| US-024 | Primary US (rank 8) | Create clinical record — entry point for all patient care                         |
+| US-025 | Primary US (rank 6) | Add consultation to record — the daily core operation; supports REL-01, USA-01    |
+| US-026 | Primary US (rank 5) | Record immutability — must be enforced from the data model layer; supports REL-02 |
+| US-031 | Primary US (rank 9) | Prescribe medications — consultations generate prescriptions; supports USA-01     |
 | US-019 | US (HIGH)           | Register new patients with demographic information                                |
 | US-020 | US (HIGH)           | Classify patients by type with automatic discount calculation                     |
 | US-023 | US (HIGH)           | Validate guardian presence for minor patients                                     |
@@ -114,7 +114,7 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 
 | Driver | Type                    | Why this iteration                                                                 |
 | ------ | ----------------------- | ---------------------------------------------------------------------------------- |
-| UH-003 | Primary UH (rank 4)     | Role-based permissions — foundational to every user-facing module; supports SEC-02 |
+| US-003 | Primary US (rank 4)     | Role-based permissions — foundational to every user-facing module; supports SEC-02 |
 | US-001 | US (HIGH)               | Create user accounts with role-based permissions                                   |
 | US-002 | US (HIGH)               | Secure login with credentials                                                      |
 | US-050 | US (HIGH)               | Validate residents can only perform actions allowed for their level (R1–R4)        |
@@ -140,15 +140,15 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**               | Enable multi-branch operations: branch registration, active branch selection with context switching, branch-scoped inventory views, and real-time inventory updates across branches. Validate the multi-tenant scalability model. Adopt command/delta-based inventory mutations as the foundation for offline conflict resolution.                                                                                                                                                                                                                                                                                                                                                     |
 | **Business objective** | **Gestión de Inventario** — Rigorous control of medical supplies, materials, and medications across all branches.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **Rationale**          | With clinical workflows and security in place, this iteration activates the multi-branch dimension. Branch selection (UH-074, rank 2) and branch registration (UH-071, rank 3) are the second and third highest-ranked primary user stories. Inventory management (UH-004, rank 7) directly supports daily clinical operations and is a prerequisite for pharmacy dispensation in Iteration 5. Inventory mutations are designed from the start as delta commands (CRN-44) following the offline-aware conventions from Iteration 1 (CRN-43), ensuring that when Iteration 6 introduces offline sync, inventory conflict resolution is deterministic and requires no data-layer rework. |
+| **Rationale**          | With clinical workflows and security in place, this iteration activates the multi-branch dimension. Branch selection (US-074, rank 2) and branch registration (US-071, rank 3) are the second and third highest-ranked primary user stories. Inventory management (US-004, rank 7) directly supports daily clinical operations and is a prerequisite for pharmacy dispensation in Iteration 5. Inventory mutations are designed from the start as delta commands (CRN-44) following the offline-aware conventions from Iteration 1 (CRN-43), ensuring that when Iteration 6 introduces offline sync, inventory conflict resolution is deterministic and requires no data-layer rework. |
 
 
 
 | Driver | Type                    | Why this iteration                                                                                        |
 | ------ | ----------------------- | --------------------------------------------------------------------------------------------------------- |
-| UH-074 | Primary UH (rank 2)     | Select active branch — context switch for multi-branch users; supports SEC-02, ESC-02                     |
-| UH-071 | Primary UH (rank 3)     | Register new branch — enables network expansion; supports SEC-02, ESC-02                                  |
-| UH-004 | Primary UH (rank 7)     | Complete inventory view for admin — total visibility of clinical resources; supports PER-01               |
+| US-074 | Primary US (rank 2)     | Select active branch — context switch for multi-branch users; supports SEC-02, ESC-02                     |
+| US-071 | Primary US (rank 3)     | Register new branch — enables network expansion; supports SEC-02, ESC-02                                  |
+| US-004 | Primary US (rank 7)     | Complete inventory view for admin — total visibility of clinical resources; supports PER-01               |
 | US-004 | US (HIGH)               | General Administrator sees complete inventory of ALL services                                             |
 | US-005 | US (HIGH)               | Service Manager sees ONLY the inventory of their service                                                  |
 | US-064 | US (HIGH)               | Configure tariffs by medical service with base price                                                      |
@@ -176,7 +176,7 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 
 | Driver | Type                 | Why this iteration                                                                                                                   |
 | ------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| UH-044 | Primary UH (rank 10) | Register payments — tracks all clinic income; supports REL-01                                                                        |
+| US-044 | Primary US (rank 10) | Register payments — tracks all clinic income; supports REL-01                                                                        |
 | US-032 | US (HIGH)            | View patient prescriptions for dispensing                                                                                            |
 | US-033 | US (HIGH)            | Validate prescription exists before dispensing                                                                                       |
 | US-034 | US (HIGH)            | Verify inventory before dispensing medications                                                                                       |
@@ -200,13 +200,13 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 | Aspect        | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**      | Enable the PWA to operate fully offline, transition transparently between online and offline modes, and synchronize data reliably upon reconnection — including conflict resolution, partial failure recovery, offline ID generation, cache corruption detection, and offline-specific business rule enforcement.                                                                                                                                               |
-| **Rationale** | Offline capability is SICEB's most architecturally challenging cross-cutting concern and the highest-ranked primary user story (UH-076, rank 1). It is placed after the clinical, pharmacy, and inventory modules (Iterations 2–5) so that the sync protocol and conflict resolution strategies are grounded in real data flows rather than abstract assumptions. It addresses three of the six high/high quality attribute scenarios (REL-01, REL-02, USA-01). |
+| **Rationale** | Offline capability is SICEB's most architecturally challenging cross-cutting concern and the highest-ranked primary user story (US-076, rank 1). It is placed after the clinical, pharmacy, and inventory modules (Iterations 2–5) so that the sync protocol and conflict resolution strategies are grounded in real data flows rather than abstract assumptions. It addresses three of the six high/high quality attribute scenarios (REL-01, REL-02, USA-01). |
 
 
 
 | Driver | Type                    | Why this iteration                                                                |
 | ------ | ----------------------- | --------------------------------------------------------------------------------- |
-| UH-076 | Primary UH (rank 1)     | Offline operation and synchronization — supports REL-01, REL-02, USA-01           |
+| US-076 | Primary US (rank 1)     | Offline operation and synchronization — supports REL-01, REL-02, USA-01           |
 | REL-01 | QA Scenario (High/High) | 100% of offline records synchronized with zero losses and zero duplicates         |
 | REL-02 | QA Scenario (High/High) | Partial sync failure recovery — resume from exact cutoff point                    |
 | USA-01 | QA Scenario (High/High) | Transparent mode transition in under 3 seconds with non-intrusive indicator       |
@@ -255,21 +255,21 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 
 All **10 primary user stories**, all **6 high/high quality attribute scenarios**, all **5 technical constraints**, all **35 high-priority concerns**, and all **24 quality attribute scenarios** are addressed across the 7 iterations.
 
-### Primary User Stories (UH primarias)
+### Primary User Stories (top-ranked US)
 
 
 | Rank | Driver | Description                           | Iteration |
 | ---- | ------ | ------------------------------------- | --------- |
-| 1    | UH-076 | Offline operation and synchronization | 6         |
-| 2    | UH-074 | Active branch selection               | 4         |
-| 3    | UH-071 | Branch registration                   | 4         |
-| 4    | UH-003 | Role-based permissions                | 3         |
-| 5    | UH-026 | Record immutability                   | 2         |
-| 6    | UH-025 | Add consultation to record            | 2         |
-| 7    | UH-004 | Complete inventory view (Admin)       | 4         |
-| 8    | UH-024 | Create clinical record                | 2         |
-| 9    | UH-031 | Prescribe medications                 | 2         |
-| 10   | UH-044 | Register payments                     | 5         |
+| 1    | US-076 | Offline operation and synchronization | 6         |
+| 2    | US-074 | Active branch selection               | 4         |
+| 3    | US-071 | Branch registration                   | 4         |
+| 4    | US-003 | Role-based permissions                | 3         |
+| 5    | US-026 | Record immutability                   | 2         |
+| 6    | US-025 | Add consultation to record            | 2         |
+| 7    | US-004 | Complete inventory view (Admin)       | 4         |
+| 8    | US-024 | Create clinical record                | 2         |
+| 9    | US-031 | Prescribe medications                 | 2         |
+| 10   | US-044 | Register payments                     | 5         |
 
 
 ### High/High Quality Attribute Scenarios

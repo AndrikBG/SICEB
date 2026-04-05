@@ -1,7 +1,34 @@
+# === Documentation (Obsidian / drafts) ===
 .obsidian
-Requirements_ES/
 ADD_IA_ES/
 Comparaciones/
 ADD.md
 comparacionGemini.md
 comparacionGemini_v2.md
+
+# === Backend ===
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# === Frontend ===
+frontend/node_modules/
+frontend/dist/
+
+# === Environment ===
+.env
+*.env.local
+
+# === IDE ===
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Logs ===
+*.log

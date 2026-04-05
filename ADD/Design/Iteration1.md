@@ -4,7 +4,7 @@
 
 Define the high-level decomposition of SICEB into containers and modules, establishing technology choices, interaction patterns, the multi-branch tenant model, cross-cutting technical conventions, and offline-aware design conventions that all subsequent iterations will refine and inherit.
 
-This is a greenfield system. No design decisions can be made about individual quality attributes or user stories until the fundamental architecture (layers, containers, module boundaries) is in place. All five technical constraints are addressed here since they shape the technology stack. Additionally, because offline synchronization (UH-076) is the highest-ranked driver and a deep cross-cutting concern, mandatory design conventions must be established now so that modules built in Iterations 2–5 are inherently compatible with offline operation, avoiding costly retrofit when Iteration 6 designs the detailed sync protocol.
+This is a greenfield system. No design decisions can be made about individual quality attributes or user stories until the fundamental architecture (layers, containers, module boundaries) is in place. All five technical constraints are addressed here since they shape the technology stack. Additionally, because offline synchronization (US-076) is the highest-ranked driver and a deep cross-cutting concern, mandatory design conventions must be established now so that modules built in Iterations 2–5 are inherently compatible with offline operation, avoiding costly retrofit when Iteration 6 designs the detailed sync protocol.
 
 ---
 

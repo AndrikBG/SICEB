@@ -16,7 +16,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 
 | Driver | Type | Description | Why this iteration |
 |---|---|---|---|
-| **UH-003** | Primary UH (rank 4) | Role-based permissions — foundational to every user-facing module; supports SEC-02 | Rank 4 primary user story; every module built in Iterations 4–7 depends on RBAC being in place |
+| **US-003** | Primary US (rank 4) | Role-based permissions — foundational to every user-facing module; supports SEC-02 | Rank 4 primary user story; every module built in Iterations 4–7 depends on RBAC being in place |
 
 ### Supporting User Stories
 
@@ -69,7 +69,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 
 | Design Concept | Pros | Cons | Discarded Alternatives |
 |---|---|---|---|
-| **RBAC with branch-scoped and residency-level dimensions** — Three-dimensional permission model: role determines base permissions, branch assignment scopes data visibility, residency level restricts clinical actions. *Addresses: CRN-15, UH-003, SEC-01, SEC-02, US-050, US-051* | Captures all three access control dimensions in a single coherent model; branch scoping enforces SEC-02; residency-level dimension is explicit, not scattered | Three-dimensional checks add latency to every request; requires careful permission matrix design; testing surface grows with role × branch × level combinations | **ABAC:** Higher complexity, policy language overhead unjustified. **ACL per resource:** Impractical at 50,000+ records scale |
+| **RBAC with branch-scoped and residency-level dimensions** — Three-dimensional permission model: role determines base permissions, branch assignment scopes data visibility, residency level restricts clinical actions. *Addresses: CRN-15, US-003, SEC-01, SEC-02, US-050, US-051* | Captures all three access control dimensions in a single coherent model; branch scoping enforces SEC-02; residency-level dimension is explicit, not scattered | Three-dimensional checks add latency to every request; requires careful permission matrix design; testing surface grows with role × branch × level combinations | **ABAC:** Higher complexity, policy language overhead unjustified. **ACL per resource:** Impractical at 50,000+ records scale |
 | **Security middleware pipeline (Chain of Responsibility)** — Ordered filters: TLS → Authentication → Authorization → Tenant Context → Audit → Error Sanitization. *Addresses: CRN-13, SEC-04, US-066, SEC-01* | Single enforcement point; each filter independently testable; ordering guarantees unauthenticated requests never reach business logic | All requests pay the cost of the full pipeline; filter ordering is critical | **Per-endpoint annotations only:** Scattered, error-prone. **Dedicated API gateway:** Excessive for modular monolith |
 | **Cryptographic hash-chained append-only audit log** — SHA-256 hash of previous entry + payload. INSERT-only at DB level. *Addresses: CRN-17, CRN-18, AUD-03* | Tamper-evidence detectable by any verifier; defense-in-depth with DB-level restriction; no external infrastructure | Hash chain verification requires sequential read; chain grows indefinitely | **Simple append-only without chaining:** DBA tampering undetectable. **Blockchain:** Extreme overhead, unnecessary consensus |
 
@@ -84,7 +84,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 
 | Design Concept | Pros | Cons | Discarded Alternatives |
 |---|---|---|---|
-| **Data-driven role/permission model** — Roles, permissions, and mappings stored in DB. Admin UI for configuration. *Addresses: MNT-03, UH-003, CRN-15* | <30 min for new roles, zero code changes; decouples permissions from releases; auditable | Risk of misconfiguration; needs validation layer for regulatory constraints | **Hard-coded roles:** Violates MNT-03. **Config-file roles:** Requires deployment |
+| **Data-driven role/permission model** — Roles, permissions, and mappings stored in DB. Admin UI for configuration. *Addresses: MNT-03, US-003, CRN-15* | <30 min for new roles, zero code changes; decouples permissions from releases; auditable | Risk of misconfiguration; needs validation layer for regulatory constraints | **Hard-coded roles:** Violates MNT-03. **Config-file roles:** Requires deployment |
 | **Residency-level policy as a first-class domain concept** — `ResidencyLevelPolicy` with hierarchical R1–R4 rules. *Addresses: US-050, US-051, SEC-01* | Explicit, centrally maintained; testable in isolation; travels in JWT for offline | Additional abstraction; must sync with permission model | **Generic RBAC per action per level:** Explosion of permissions. **Hard-coded checks per handler:** Scattered, duplicated |
 | **LFPDPPP compliance as a cross-cutting data access policy** — Consent verification, ARCO workflows, access logging. *Addresses: CRN-32, US-066* | Architecturally explicit; enforceable at middleware level; ARCO with deadline tracking | Adds access-check overhead; ARCO Rectification requires careful design with immutable records | **Consent as UI checkbox only:** No enforcement. **Post-hoc retrofit:** Expensive and risky |
 | **Error sanitization at API boundary** — Terminal filter strips internals, returns `{ code, message, correlationId }`. *Addresses: CRN-13, SEC-04* | Prevents leakage in all error paths; standardized format; correlation ID for debugging | Developers must use correlation IDs for debugging; overly aggressive sanitization could hide useful info | **Verbose errors in production:** Information leakage. **Per-handler formatting:** Inconsistent |
@@ -96,10 +96,10 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 | Instantiation Decision | Rationale |
 |---|---|
 | **`AuthenticationService` in IAM** — Validates credentials (bcrypt), issues JWT access token (15-min TTL) with claims: userId, role, residencyLevel, branchAssignments, activeBranchId, permissions, consentVerifiedScopes. Issues refresh token (7-day TTL, server-side, revocable). `TokenDenyList` (in-memory cache + DB) for immediate revocation. | Satisfies **US-002**, **SEC-04**. Embedded claims support CRN-43 rule (3) for offline authorization. |
-| **`AuthorizationMiddleware` in IAM** — Intercepts every request. Evaluates three dimensions: (1) role permission, (2) branch assignment, (3) residency level via `ResidencyLevelPolicy`. Rejects with 403 + audit event on failure. | Satisfies **SEC-01**, **SEC-02**, **CRN-15**, **UH-003**. |
+| **`AuthorizationMiddleware` in IAM** — Intercepts every request. Evaluates three dimensions: (1) role permission, (2) branch assignment, (3) residency level via `ResidencyLevelPolicy`. Rejects with 403 + audit event on failure. | Satisfies **SEC-01**, **SEC-02**, **CRN-15**, **US-003**. |
 | **`ResidencyLevelPolicy` in IAM** — Encodes R1–R4 hierarchical rules from DB, cached in memory. R1/R2/R3 blocked from `controlled_med:prescribe`; R1/R2 require mandatory supervision. | Satisfies **US-050**, **US-051**, **SEC-01**. |
 | **`PrescriptionCommandHandler` wired to authorization** — Route annotated with `prescription:create` + conditionally `controlled_med:prescribe`. Middleware enforces before handler executes. | Completes Iteration 2 deferred enforcement. Satisfies **US-051**, **SEC-01**. |
-| **Data-driven `RolePermissionModel`** — Tables: `roles`, `permissions`, `role_permissions`. 11 system roles seeded. Validation prevents regulatory conflicts. Admin UI for configuration. | Satisfies **MNT-03**, **UH-003**, **CRN-15**. |
+| **Data-driven `RolePermissionModel`** — Tables: `roles`, `permissions`, `role_permissions`. 11 system roles seeded. Validation prevents regulatory conflicts. Admin UI for configuration. | Satisfies **MNT-03**, **US-003**, **CRN-15**. |
 | **`UserManagementService` in IAM** — User CRUD with role/branch assignment. Deactivation triggers `TokenDenyList` revocation. Medical staff: residencyLevel, supervisorStaffId (mandatory R1/R2). | Satisfies **US-001**, **CRN-15**. |
 | **Security middleware pipeline** — Six ordered filters: TlsVerifier → AuthenticationFilter → AuthorizationFilter → TenantContextInjector → AuditInterceptor → ErrorSanitizer. | Satisfies **SEC-04**, **SEC-01**, **SEC-02**, **US-066**, **CRN-13**. |
 | **PostgreSQL RLS on tenant-scoped tables** — `WHERE branch_id = current_setting('app.current_branch_id')`. `admin_reporting` role with BYPASSRLS for Reporting module. | Satisfies **SEC-02** (zero unauthorized cross-branch access). |
@@ -107,7 +107,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 | **`AuditEventReceiver`** — Dual ingestion: synchronous for security-critical events, asynchronous for high-volume access logging. | Satisfies **CRN-17**, **US-066**. |
 | **`AuditQueryService`** — Four queries: GetAuditTrailForEntity, GetAuditTrailForUser, GetAccessLogForPatient, VerifyChainIntegrity. | Satisfies **CRN-17**, **US-066**, **CRN-32**. |
 | **`LfpdpppComplianceTracker`** — Consent lifecycle via `consent_records`. ARCO workflows via `arco_requests` with legal deadlines. Rectification as corrective addendum events. | Satisfies **CRN-32**. |
-| **PWA security components** — `LoginView`, `BranchSelectionView`, `SessionManager` (JWT in memory, auto-refresh), `RoleAwareRenderer`, `UserManagementView`, `RoleConfigurationView`. | Satisfies **US-001**, **US-002**, **UH-003**, **MNT-03**. |
+| **PWA security components** — `LoginView`, `BranchSelectionView`, `SessionManager` (JWT in memory, auto-refresh), `RoleAwareRenderer`, `UserManagementView`, `RoleConfigurationView`. | Satisfies **US-001**, **US-002**, **US-003**, **MNT-03**. |
 | **Cloud Database security schema** — Tables: users, roles, permissions, role_permissions, user_branch_assignments, medical_staff, refresh_tokens, token_deny_list, audit_log, consent_records, arco_requests. Indexes on audit queries. | Satisfies **CRN-15**, **CRN-17**, **CRN-18**, **CRN-32**. |
 
 ---
@@ -140,7 +140,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 | CreateUser | `POST /users` | US-001, CRN-15 |
 | UpdateUser | `PUT /users/:userId` | US-001, CRN-15 |
 | DeactivateUser | `POST /users/:userId/deactivate` | US-001, SEC-04 |
-| CreateRole | `POST /roles` | MNT-03, UH-003, CRN-15 |
+| CreateRole | `POST /roles` | MNT-03, US-003, CRN-15 |
 | UpdateRolePermissions | `PUT /roles/:roleId/permissions` | MNT-03, CRN-15 |
 
 #### Query Interfaces (Identity & Access)
@@ -149,7 +149,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 |---|---|---|
 | ListUsers | `GET /users` | US-001, CRN-15 |
 | GetUser | `GET /users/:userId` | US-001 |
-| ListRoles | `GET /roles` | MNT-03, UH-003 |
+| ListRoles | `GET /roles` | MNT-03, US-003 |
 | ListPermissions | `GET /permissions` | MNT-03, CRN-15 |
 
 #### Query Interfaces (Audit & Compliance)
@@ -165,7 +165,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 
 | Driver | Decision | Rationale | Discarded Alternatives |
 |---|---|---|---|
-| **CRN-15, UH-003** | Three-dimensional RBAC: role permissions + branch scoping + residency-level restrictions. 11 initial roles seeded; custom roles via admin UI | Captures all access control requirements in a single coherent model; branch scoping enforces SEC-02; residency dimension is explicit and centrally maintained | ABAC — higher complexity; ACL per resource — impractical at scale |
+| **CRN-15, US-003** | Three-dimensional RBAC: role permissions + branch scoping + residency-level restrictions. 11 initial roles seeded; custom roles via admin UI | Captures all access control requirements in a single coherent model; branch scoping enforces SEC-02; residency dimension is explicit and centrally maintained | ABAC — higher complexity; ACL per resource — impractical at scale |
 | **US-002, SEC-04** | Stateless JWT with embedded claims (15-min TTL) + refresh tokens (7-day TTL) + TokenDenyList for immediate revocation | Embedded claims enable offline authorization (CRN-43 rule 3); short TTL limits exposure; deny-list closes revocation gap | Server-side sessions — incompatible with offline; OAuth2 with external IdP — external dependency, no offline introspection |
 | **SEC-01, SEC-04, CRN-13, US-066** | Six-filter security middleware pipeline: TlsVerifier → AuthenticationFilter → AuthorizationFilter → TenantContextInjector → AuditInterceptor → ErrorSanitizer | Single enforcement point; ordering guarantees unauthenticated requests rejected first; all access audited; no internal details leak | Per-endpoint annotations — scattered; Dedicated API gateway — excessive for monolith |
 | **SEC-02** | PostgreSQL RLS as defense-in-depth below application-level filtering. `admin_reporting` role with BYPASSRLS for cross-branch reports | Two-layer enforcement for High/High scenario; RLS prevents data leakage even with application bugs | Application-level WHERE only — single layer, insufficient for SEC-02 |
@@ -181,7 +181,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 
 | Driver | Analysis Result |
 |---|---|
-| **UH-003** — Role-based permissions | **Satisfied.** Three-dimensional RBAC via `AuthorizationMiddleware`. 11 initial roles seeded; custom roles via admin UI. SD-01 shows full enforcement flow. |
+| **US-003** — Role-based permissions | **Satisfied.** Three-dimensional RBAC via `AuthorizationMiddleware`. 11 initial roles seeded; custom roles via admin UI. SD-01 shows full enforcement flow. |
 | **US-001** — Create user accounts with role-based permissions | **Satisfied.** `UserManagementService` handles user CRUD. Interfaces defined in Section 8.3. `UserManagementView` in PWA provides admin UI. |
 | **US-002** — Secure login with credentials | **Satisfied.** `AuthenticationService` issues JWT with embedded claims + refresh tokens. SD-02 shows full authentication flow. `LoginView` and `SessionManager` in PWA. |
 | **US-050** — Validate residents perform only level-allowed actions | **Satisfied.** `ResidencyLevelPolicy` encodes R1–R4 rules. `AuthorizationMiddleware` delegates for `requiresResidencyCheck` permissions. |
@@ -201,7 +201,7 @@ Security is cross-cutting and must be layered on top of the structural foundatio
 
 | Status | Count | Drivers |
 |---|---|---|
-| **Satisfied** | 15 | UH-003, US-001, US-002, US-050, US-051, US-066, SEC-01, SEC-02, SEC-04, MNT-03, CRN-15, CRN-13, CRN-17, CRN-18, CRN-32 |
+| **Satisfied** | 15 | US-003, US-001, US-002, US-050, US-051, US-066, SEC-01, SEC-02, SEC-04, MNT-03, CRN-15, CRN-13, CRN-17, CRN-18, CRN-32 |
 | **Partially Satisfied** | 0 | — |
 | **Not Satisfied** | 0 | — |
 

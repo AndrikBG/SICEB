@@ -1,22 +1,24 @@
 # **Vision and Scope Document**
 
-## **INDEX**
+## Index
 
-1. [Introduction]
-2. [Business Context]
-    - [Background and Problem Statement]
-    - [Needs]
-    - [Current Key Business Processes]
-3. [Solution Vision]
-    - [Vision Statement]
-    - [Future Key Business Processes]
-    - [High-Level System Functionalities (Epics)]
-4. [Project Scope]
-5. [System Context]
-    - [Stakeholder Summary]
-    - [Operating Environment]
+- [1. Introduction](#vision-1-introduction)
+- [2. Business Context](#vision-2-business-context)
+  - [Background and Problem Statement](#vision-background-and-problem-statement)
+  - [Needs](#vision-needs)
+  - [Current Key Business Processes](#vision-current-key-business-processes)
+- [3. Solution Vision](#vision-3-solution-vision)
+  - [Vision Statement](#vision-vision-statement)
+  - [Future Key Business Processes](#vision-future-key-business-processes)
+  - [High-Level System Functionalities (Epics)](#vision-high-level-system-functionalities-epics)
+- [4. Project Scope](#vision-4-project-scope)
+- [5. System Context](#vision-5-system-context)
+  - [Stakeholder Summary](#vision-stakeholder-summary)
+  - [Operating Environment](#vision-operating-environment)
+
 ---
 
+<a id="vision-1-introduction"></a>
 ## **1. Introduction**
 
 This document presents the vision and scope of **SICEB: "Comprehensive Wellness Control and Records System"** (Sistema Integral de Control y Expedientes de Bienestar). Its objective is to establish an initial agreement with the direction of the **Private Wellness Integrated Clinics Network** for the development of a system that optimizes the management of the medical services offered across its **multiple branches (sucursales)**.
@@ -25,8 +27,10 @@ The document defines the business context, the current problem, the identified n
 
 ---
 
+<a id="vision-2-business-context"></a>
 ## **2. Business Context**
 
+<a id="vision-background-and-problem-statement"></a>
 ### **Background and Problem Statement**
 
 The **Private Wellness Integrated Clinics Network** is a private health organization that provides various specialized medical services in the city. The clinic operates as a **medical teaching institution**, attending to patients while training medical residents (levels R1 to R4), across **multiple physical locations (branches)** that currently operate disjointedly.
@@ -63,6 +67,7 @@ Currently, the clinic operates with **completely manual processes** that result 
 - **Inefficient Personnel Management:** Manual registration of training activities for residents and attending physicians.
 - **Slow Financial Reports:** Manual generation of income and expense reports consumes valuable time.
 
+<a id="vision-needs"></a>
 ### **Needs**
 
 Below are the needs that the organization has and that would allow it to solve its problems:
@@ -83,6 +88,7 @@ Below are the needs that the organization has and that would allow it to solve i
 |NEC-12|Management of differentiated discounts for students (30%) and workers (20%)|
 |NEC-13|Centralized management of multiple branches with consolidated reporting and inventory|
 
+<a id="vision-current-key-business-processes"></a>
 ### **Current Key Business Processes**
 
 The main business processes in their current state (AS IS) are as follows:
@@ -102,8 +108,10 @@ The main business processes in their current state (AS IS) are as follows:
 
 ---
 
+<a id="vision-3-solution-vision"></a>
 ## **3. Solution Vision**
 
+<a id="vision-vision-statement"></a>
 ### **Vision Statement**
 
 The **SICEB** system will be a **Hybrid Cloud / PWA (Progressive Web App)** application that will automate and centralize the management of information related to the business model of the **Wellness Integrated Clinics Network**.
@@ -122,6 +130,7 @@ The system will allow:
 
 This system should **optimize time**, **improve operational control**, and **provide a better experience** to all involved (administrative staff, physicians, residents, patients).
 
+<a id="vision-future-key-business-processes"></a>
 ### **Future Key Business Processes**
 
 The business processes after implementing SICEB (TO BE) are as follows:
@@ -138,6 +147,7 @@ The business processes after implementing SICEB (TO BE) are as follows:
 |PROC-11-FUT|Branch Provisioning|**Description:** Setup and configuration of a new physical branch.<br/>**Steps:**<br/>1. General Administrator registers new branch in SICEB (Name, Address, Phone)<br/>2. Admin assigns a Service Manager to the new branch<br/>3. Admin configures initial inventory load for the branch<br/>4. Branch becomes active in the global dashboard<br/>**Improvements:** Scalability, centralized control of expansion, instant operational readiness|
 |PROC-12-FUT|Personnel Branch Rotation|**Description:** Enabling medical personnel to operate across different branches.<br/>**Steps:**<br/>1. Admin assigns multiple authorized branches to a Physician (or "Roving" status)<br/>2. Physician logs in and selects the "Current Branch" context for the session<br/>3. System filters inventory and patients for that specific location context<br/>4. Physician can switch active branch context without relogging if authorized<br/>**Improvements:** Flexibility for staff rotation, covering absences, resource optimization|
 
+<a id="vision-high-level-system-functionalities-epics"></a>
 ### **High-Level System Functionalities (Epics)**
 
 Below are the high-level functionalities (epics) that the solution will have:
@@ -165,6 +175,7 @@ Below are the high-level functionalities (epics) that the solution will have:
 
 ---
 
+<a id="vision-4-project-scope"></a>
 ## **4. Project Scope**
 
 The project will be developed in **10 incremental deliveries**, prioritizing functionalities that add the most value to the business:
@@ -193,8 +204,10 @@ The project will be developed in **10 incremental deliveries**, prioritizing fun
 
 ---
 
+<a id="vision-5-system-context"></a>
 ## **5. System Context**
 
+<a id="vision-stakeholder-summary"></a>
 ### **Stakeholder Summary**
 
 Below are the people who participate in relation to the development and operation of the system:
@@ -217,6 +230,7 @@ Below are the people who participate in relation to the development and operatio
 
 > **System User Definition:** A *System User* is any person who accesses SICEB through an authenticated account. Each user has a unique set of credentials (email and password), exactly one assigned role from the stakeholders above, and one or more authorized branches. Upon login, multi-branch users must select their active branch. Deactivating a user preserves all their historical records for audit purposes.
 
+<a id="vision-operating-environment"></a>
 ### **Operating Environment**
 
 #### **Architecture Overview**

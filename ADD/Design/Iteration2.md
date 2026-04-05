@@ -4,7 +4,7 @@
 
 Design the clinical care modules that represent the primary business value stream: patient management, medical consultations, prescribing, laboratory study tracking, and the immutable clinical record. Enforce medical record immutability, NOM-004-SSA3-2012 compliance, and a system-wide unique patient identifier.
 
-The clinic's core revenue comes from patient consultations. The clinical record is the most regulated artifact (NOM-004-SSA3-2012) and the most architecturally constrained (append-only, permanent retention). Addressing this early ensures the data model is correct before downstream modules (pharmacy, laboratory, payments) depend on it. This iteration covers 4 of the 10 primary user stories (UH-024, UH-025, UH-026, UH-031).
+The clinic's core revenue comes from patient consultations. The clinical record is the most regulated artifact (NOM-004-SSA3-2012) and the most architecturally constrained (append-only, permanent retention). Addressing this early ensures the data model is correct before downstream modules (pharmacy, laboratory, payments) depend on it. This iteration covers 4 of the 10 primary user stories (US-024, US-025, US-026, US-031).
 
 **Business objective:** Gestión de Clientes — Maintain centralized digital records with complete care history.
 
@@ -16,10 +16,10 @@ The clinic's core revenue comes from patient consultations. The clinical record 
 
 | Driver | Description | Why this iteration |
 |---|---|---|
-| **UH-024** (rank 8) | Create clinical record | Entry point for all patient care |
-| **UH-025** (rank 6) | Add consultation to record | The daily core clinical operation; supports REL-01, USA-01 |
-| **UH-026** (rank 5) | Record immutability | Must be enforced from the data model layer; supports REL-02 |
-| **UH-031** (rank 9) | Prescribe medications | Consultations generate prescriptions; supports USA-01 |
+| **US-024** (rank 8) | Create clinical record | Entry point for all patient care |
+| **US-025** (rank 6) | Add consultation to record | The daily core clinical operation; supports REL-01, USA-01 |
+| **US-026** (rank 5) | Record immutability | Must be enforced from the data model layer; supports REL-02 |
+| **US-031** (rank 9) | Prescribe medications | Consultations generate prescriptions; supports USA-01 |
 
 ### Supporting User Stories
 
@@ -73,9 +73,9 @@ The clinic's core revenue comes from patient consultations. The clinical record 
 
 | Design Concept | Pros | Cons | Discarded Alternatives |
 |---|---|---|---|
-| **Event-sourced / append-only clinical record** — Per-patient event stream of consultations, prescriptions, labs, attachments. *Addresses: UH-026, CRN-02, AUD-03, CRN-01* | Strong immutability guarantee for clinical record and auditability. Fits permanent retention and NOM-004. Aligns with offline-aware, idempotent commands (CRN-43) | More complex query model requiring projections/read models. Team must discipline event schema evolution | Mutable record with soft-delete — risks silent data loss, weak immutability. Pure CRUD with update-in-place — violates UH-026, CRN-02, AUD-03 |
+| **Event-sourced / append-only clinical record** — Per-patient event stream of consultations, prescriptions, labs, attachments. *Addresses: US-026, CRN-02, AUD-03, CRN-01* | Strong immutability guarantee for clinical record and auditability. Fits permanent retention and NOM-004. Aligns with offline-aware, idempotent commands (CRN-43) | More complex query model requiring projections/read models. Team must discipline event schema evolution | Mutable record with soft-delete — risks silent data loss, weak immutability. Pure CRUD with update-in-place — violates US-026, CRN-02, AUD-03 |
 | **CQRS for clinical workflows** — Write model for commands, read model for patient search and history. *Addresses: PER-03, US-027* | Separates write side (append-only events) from read side (optimized projections). Enables indexed projections for sub-1s search. Read models evolve independently | Additional complexity: projections, eventual consistency. Requires infrastructure to rebuild projections | Single unified CRUD model — slower queries, harder immutability enforcement. Ad-hoc denormalized tables — risks duplication and inconsistency |
-| **DDD aggregates for clinical entities** — `PatientAggregate`, `MedicalRecordAggregate`, `ConsultationAggregate`. *Addresses: UH-024, UH-025, UH-031, CRN-37* | Aggregates enforce invariants: one record per patient, append-only, prescriptions and labs tied to consultations. Clear transactional boundaries | Requires stronger modeling discipline. Must design aggregate boundaries carefully to avoid contention | Anemic domain model — business rules scattered, harder invariant reasoning. Entity-per-table with no aggregate boundaries — FK spaghetti, weak invariants |
+| **DDD aggregates for clinical entities** — `PatientAggregate`, `MedicalRecordAggregate`, `ConsultationAggregate`. *Addresses: US-024, US-025, US-031, CRN-37* | Aggregates enforce invariants: one record per patient, append-only, prescriptions and labs tied to consultations. Clear transactional boundaries | Requires stronger modeling discipline. Must design aggregate boundaries carefully to avoid contention | Anemic domain model — business rules scattered, harder invariant reasoning. Entity-per-table with no aggregate boundaries — FK spaghetti, weak invariants |
 
 ### Externally Developed Components
 
@@ -99,13 +99,13 @@ The clinic's core revenue comes from patient consultations. The clinical record 
 
 | Instantiation Decision | Rationale |
 |---|---|
-| **`ClinicalEvent` stream per patient (append-only) as the core write model** — Every consultation, prescription, lab request/result, and attachment is stored as an immutable clinical event linked to `MedicalRecord` and `Patient`. No updates or deletes permitted. | Enforces UH-026, CRN-02, CRN-01, and AUD-03 at the data model and domain levels. Each event carries an `IdempotencyKey` for safe offline replay (CRN-43). |
+| **`ClinicalEvent` stream per patient (append-only) as the core write model** — Every consultation, prescription, lab request/result, and attachment is stored as an immutable clinical event linked to `MedicalRecord` and `Patient`. No updates or deletes permitted. | Enforces US-026, CRN-02, CRN-01, and AUD-03 at the data model and domain levels. Each event carries an `IdempotencyKey` for safe offline replay (CRN-43). |
 | **CQRS in Clinical Care bounded context** — Command-side event stream + read-side projections for patient timeline, NOM-004 sections, patient search, and pending lab studies. | Separates immutable writes from optimized reads. Enables fast patient search (PER-03) while keeping the core model simple and append-only. |
-| **DDD aggregates: `PatientAggregate`, `MedicalRecordAggregate`, `ConsultationAggregate`** — Clear transactional boundaries within Clinical Care, Prescriptions, and Laboratory modules. | Aggregates enforce invariants: exactly one `MedicalRecord` per `Patient`, consultations are append-only, prescriptions and lab orders always tied to a consultation context (UH-024, UH-025, UH-031, US-027). |
+| **DDD aggregates: `PatientAggregate`, `MedicalRecordAggregate`, `ConsultationAggregate`** — Clear transactional boundaries within Clinical Care, Prescriptions, and Laboratory modules. | Aggregates enforce invariants: exactly one `MedicalRecord` per `Patient`, consultations are append-only, prescriptions and lab orders always tied to a consultation context (US-024, US-025, US-031, US-027). |
 | **Global `PatientId` (UUID) with patient identity service** — `EntityId` specialization enforced by `PatientAggregate` validating uniqueness across all branches. | Guarantees a single clinical record per patient across the entire network (CRN-37). Compatible with offline ID generation per Iteration 1 conventions (CRN-43). |
 | **Relational schema fragments for clinical entities + dedicated read models** — PostgreSQL core tables for `Patient`, `MedicalRecord`, `ClinicalEvent` specializations, plus `PatientSearchView`, `ClinicalTimelineView`. | Implements normalized core with indexed read models. Composite B-tree indexes and `pg_trgm` trigram indexes target PER-03. Respects `branch_id` tenant isolation. |
 | **`Nom004RecordView` structured projection** — NOM-004-SSA3-2012 mandatory sections as a first-class read model generated from clinical events. | Makes regulatory compliance explicit and automatable (CRN-31, AUD-03). Can be regenerated without altering stored events. |
-| **API endpoints for clinical workflows** — Command interfaces: `CreatePatient`, `CreateMedicalRecord`, `AddConsultation`, `CreatePrescriptionFromConsultation`, `CreateLabStudiesFromConsultation`, `RecordLabResult`. Query interfaces: `SearchPatients`, `GetPatientClinicalTimeline`, `GetNom004Record`, `ListPendingLabStudies`. | Instantiates CQRS and aggregate model into concrete interfaces. Each command appends events; each query uses read models. Directly supports UH-024, UH-025, UH-031, US-019, US-020, US-023, US-027, US-038, US-040, US-041, US-042. |
+| **API endpoints for clinical workflows** — Command interfaces: `CreatePatient`, `CreateMedicalRecord`, `AddConsultation`, `CreatePrescriptionFromConsultation`, `CreateLabStudiesFromConsultation`, `RecordLabResult`. Query interfaces: `SearchPatients`, `GetPatientClinicalTimeline`, `GetNom004Record`, `ListPendingLabStudies`. | Instantiates CQRS and aggregate model into concrete interfaces. Each command appends events; each query uses read models. Directly supports US-024, US-025, US-031, US-019, US-020, US-023, US-027, US-038, US-040, US-041, US-042. |
 | **Guided `ConsultationWizard` in PWA** — Multi-step flow: (1) vital signs and diagnosis, (2) prescriptions, (3) lab orders, (4) review and confirm. | Materializes the guided flow concept. Supports USA-02 (resident onboarding) and reduces errors by mirroring domain aggregates and NOM-004 structure in the UI. |
 | **PWA clinical components** — `PatientSearchView`, `MedicalRecordView`, `ConsultationWizard`, `PendingLabStudiesView`, `LabResultEntryForm`, `ClinicalStateManager`. | Extends PWA Client architecture from Iteration 1 with clinical-specific UI and state management aligned with back-end modules and read models. |
 | **Audit event emission hooks from `ClinicalEventStore`** — Clinical write operations emit audit events to `Audit & Compliance` before the full audit infra is designed in Iteration 3. | Ensures all clinical changes produce the minimal audit envelope required for AUD-03. No retrofit needed when Iteration 3 designs the complete audit trail. |
@@ -133,9 +133,9 @@ The clinic's core revenue comes from patient consultations. The clinical record 
 | Command | Module | Endpoint | Events Produced | Key Drivers |
 |---|---|---|---|---|
 | CreatePatient | Clinical Care | `POST /patients` | `RECORD_CREATED` (via linked CreateMedicalRecord) | CRN-37, US-019, US-020, US-023 |
-| CreateMedicalRecord | Clinical Care | Internal (after CreatePatient) | `RECORD_CREATED` | UH-026, CRN-02, CRN-01 |
-| AddConsultation | Clinical Care | `POST /consultations` | `CONSULTATION` | UH-025, USA-02 |
-| CreatePrescriptionFromConsultation | Prescriptions | `POST /consultations/:id/prescriptions` | `PRESCRIPTION` | UH-031, US-031 |
+| CreateMedicalRecord | Clinical Care | Internal (after CreatePatient) | `RECORD_CREATED` | US-026, CRN-02, CRN-01 |
+| AddConsultation | Clinical Care | `POST /consultations` | `CONSULTATION` | US-025, USA-02 |
+| CreatePrescriptionFromConsultation | Prescriptions | `POST /consultations/:id/prescriptions` | `PRESCRIPTION` | US-031, US-031 |
 | CreateLabStudiesFromConsultation | Laboratory | `POST /consultations/:id/lab-studies` | `LAB_ORDER` per study | US-038 |
 | RecordLabResult | Laboratory | `POST /lab-studies/:id/results` | `LAB_RESULT` | US-041, US-042, CON-05 |
 
@@ -144,7 +144,7 @@ The clinic's core revenue comes from patient consultations. The clinical record 
 | Query | Read Model | Endpoint | Performance Target | Key Drivers |
 |---|---|---|---|---|
 | SearchPatients | `PatientSearchReadModel` | `GET /patients/search` | Sub-1s over 50,000+ records | PER-03, US-027 |
-| GetPatientClinicalTimeline | `ClinicalTimelineReadModel` | `GET /patients/:id/timeline` | Pre-computed, paginated | US-027, UH-025 |
+| GetPatientClinicalTimeline | `ClinicalTimelineReadModel` | `GET /patients/:id/timeline` | Pre-computed, paginated | US-027, US-025 |
 | GetNom004Record | `Nom004RecordView` | `GET /patients/:id/nom004` | Structured projection | CRN-31, AUD-03 |
 | ListPendingLabStudies | `PendingLabStudiesReadModel` | `GET /lab-studies/pending` | Branch-scoped, sorted | US-040 |
 
@@ -152,13 +152,13 @@ The clinic's core revenue comes from patient consultations. The clinical record 
 
 | Driver | Decision | Rationale | Discarded Alternatives |
 |---|---|---|---|
-| **UH-026, CRN-02, AUD-03** | Adopt append-only clinical event stream (`ClinicalEvent`) as the authoritative write model for medical records | Enforces immutability at the deepest layer; satisfies NOM-004 permanent retention (CRN-01) and 100% modification blocking (AUD-03); aligns with offline-aware conventions (CRN-43) | Update-in-place CRUD — weaker guarantee; Soft-delete — still allows logical mutation |
+| **US-026, CRN-02, AUD-03** | Adopt append-only clinical event stream (`ClinicalEvent`) as the authoritative write model for medical records | Enforces immutability at the deepest layer; satisfies NOM-004 permanent retention (CRN-01) and 100% modification blocking (AUD-03); aligns with offline-aware conventions (CRN-43) | Update-in-place CRUD — weaker guarantee; Soft-delete — still allows logical mutation |
 | **PER-03, US-027** | Introduce CQRS with dedicated read models (`PatientSearchReadModel`, `ClinicalTimelineReadModel`, `Nom004RecordView`, `PendingLabStudiesReadModel`) backed by indexed views | Sub-1s patient search over 50,000+ records without compromising append-only integrity; read models evolve independently | Single unified model — trade-off between write simplicity and read performance; Full event sourcing with runtime projection — higher complexity |
 | **CRN-31** | Represent NOM-004 sections as structured projection (`Nom004RecordView`) generated from clinical events | First-class regulatory compliance; automated completeness validation; regenerable without altering events | Free-form text — impossible to automate verification; Hard-coded screen layouts — brittle, not auditable |
 | **CRN-37** | Global `PatientId` (UUID) enforced by `PatientAggregate` with cross-branch uniqueness validation | Exactly one record per patient across all branches; compatible with offline ID generation | Auto-increment per branch — collisions on sync; Composite natural keys — brittle; Centralized sequence server — incompatible with offline |
 | **CRN-01** | Permanent retention for all clinical events; no deletion or archival; retention policy encoded in `MedicalRecord` aggregate | Satisfies NOM-004 permanent retention; combined with append-only store prevents data loss | Time-based archival — violates NOM-004; Soft-delete with recovery window — implies eventual deletion |
 | **USA-02** | Guided `ConsultationWizard` in PWA with four steps: vitals/diagnosis, prescriptions, lab orders, review | Reduces cognitive load for residents; enforces structured NOM-004-aligned data capture; mirrors domain aggregates | Unstructured forms — higher error rate; Single long form — overwhelming, no progressive validation |
-| **UH-024, UH-025, UH-031, US-038** | DDD aggregates with clear transactional boundaries; prescriptions and lab orders created within consultation context as atomic event bundles | Enforces clinical invariants at domain level; prevents partial consultation data; enables independent module testing | Anemic domain model — scattered rules; Entity-per-table — weak invariant enforcement |
+| **US-024, US-025, US-031, US-038** | DDD aggregates with clear transactional boundaries; prescriptions and lab orders created within consultation context as atomic event bundles | Enforces clinical invariants at domain level; prevents partial consultation data; enables independent module testing | Anemic domain model — scattered rules; Entity-per-table — weak invariant enforcement |
 | **AUD-03, CRN-17** | Wire clinical writes to emit audit events to Audit & Compliance via `ClinicalEventStore` before full audit infra (Iteration 3) | No auditability gap from day one; no retrofit needed when Iteration 3 completes audit design | Defer to Iteration 3 — unaudited gap for early clinical transactions |
 | **PER-03** | Composite B-tree indexes + `pg_trgm` trigram indexes on `PatientSearchReadModel`; partial indexes per branch | Sub-1s search over 50,000+ records; trigram indexes support partial name matching; partial indexes improve multi-tenant cache hits | No indexes — unacceptable performance; Elasticsearch — disproportionate overhead; `tsvector` — overkill for name search |
 
@@ -168,10 +168,10 @@ The clinic's core revenue comes from patient consultations. The clinical record 
 
 | Driver | Analysis Result |
 |---|---|
-| **UH-024** — Create clinical record | **Satisfied.** `PatientAggregate` and `MedicalRecordAggregate` handle patient registration and record creation. SD-03 illustrates the full flow. One-to-one patient-record invariant enforced at the aggregate level. |
-| **UH-025** — Add consultation to record | **Satisfied.** `ConsultationAggregate` appends `CONSULTATION` events to the clinical event stream. SD-04 illustrates the guided wizard flow including prescriptions and lab orders. |
-| **UH-026** — Record immutability | **Satisfied.** Append-only `ClinicalEventStore` rejects all update and delete operations. Events are immutable once persisted. AUD-03 audit emission ensures modification attempts are logged. |
-| **UH-031** — Prescribe medications | **Satisfied.** `PrescriptionCommandHandler` creates prescriptions within consultation context. Prescription events are appended to the clinical event stream. Prescriber-level restrictions (R1–R4) are structurally supported and will be fully enforced in Iteration 3. |
+| **US-024** — Create clinical record | **Satisfied.** `PatientAggregate` and `MedicalRecordAggregate` handle patient registration and record creation. SD-03 illustrates the full flow. One-to-one patient-record invariant enforced at the aggregate level. |
+| **US-025** — Add consultation to record | **Satisfied.** `ConsultationAggregate` appends `CONSULTATION` events to the clinical event stream. SD-04 illustrates the guided wizard flow including prescriptions and lab orders. |
+| **US-026** — Record immutability | **Satisfied.** Append-only `ClinicalEventStore` rejects all update and delete operations. Events are immutable once persisted. AUD-03 audit emission ensures modification attempts are logged. |
+| **US-031** — Prescribe medications | **Satisfied.** `PrescriptionCommandHandler` creates prescriptions within consultation context. Prescription events are appended to the clinical event stream. Prescriber-level restrictions (R1–R4) are structurally supported and will be fully enforced in Iteration 3. |
 | **US-019** — Register new patients | **Satisfied.** `CreatePatient` command with demographic validation, patient type classification, and guardian checks. |
 | **US-020** — Classify patients by type | **Satisfied.** `PatientAggregate` applies type classification (Student, Worker, External) with automatic discount calculation. |
 | **US-023** — Validate guardian for minors | **Satisfied.** `PatientAggregate` enforces mandatory guardian fields when patient age is under 17. |
@@ -192,7 +192,7 @@ The clinic's core revenue comes from patient consultations. The clinical record 
 
 | Status | Count | Drivers |
 |---|---|---|
-| **Satisfied** | 19 | UH-024, UH-025, UH-026, UH-031, US-019, US-020, US-023, US-027, US-038, US-040, US-041, US-042, PER-03, USA-02, AUD-03, CRN-02, CRN-01, CRN-31, CRN-37 |
+| **Satisfied** | 19 | US-024, US-025, US-026, US-031, US-019, US-020, US-023, US-027, US-038, US-040, US-041, US-042, PER-03, USA-02, AUD-03, CRN-02, CRN-01, CRN-31, CRN-37 |
 | **Partially Satisfied** | 0 | — |
 | **Not Satisfied** | 0 | — |
 

@@ -1,4 +1,29 @@
 # Business Case
+
+## Index
+
+- [Business case (introduction)](#ad-business-case-intro)
+- [Business objectives](#ad-business-objectives)
+- [Primary user stories (US)](#ad-primary-user-stories)
+- [Quality attributes](#ad-quality-attributes)
+- [Review constraints](#ad-review-constraints)
+  - [Technical constraints](#ad-technical-constraints)
+- [Review architectural concerns](#ad-review-architectural-concerns)
+- [High-priority architectural concerns — overview](#ad-high-priority-overview)
+- [1. Data management and persistence](#ad-sec-01-data)
+- [2. Integration architecture](#ad-sec-02-integration)
+- [3. Security architecture](#ad-sec-03-security)
+- [4. Operational architecture](#ad-sec-04-operational)
+- [5. Development architecture](#ad-sec-05-development)
+- [6. Business architecture](#ad-sec-06-business)
+- [7. Compliance and legal framework](#ad-sec-07-compliance)
+- [8. Synchronization and conflict resolution](#ad-sec-08-sync)
+- [9. User experience](#ad-sec-09-ux)
+- [10. Internal technical requirements](#ad-sec-10-technical)
+- [Distribution by category](#ad-distribution-by-category)
+- [ID summary](#ad-id-summary)
+
+<a id="ad-business-case-intro"></a>
 SICEB (Sistema Integral de Control y Expedientes de Bienestar — Comprehensive Wellness Control and Records System) is a hybrid cloud Progressive Web Application designed to digitize and centralize the operations of a private multi-branch medical clinic network. It replaces entirely manual, paper-based workflows with an integrated platform that manages electronic medical records, medical supply inventories with automated alerts, supply and workshop request approvals, pharmacy prescription validation, laboratory study tracking, financial reporting, and role-based access control for nine distinct user roles — from general directors to medical residents (R1–R4). With built-in offline capability and automatic data synchronization, SICEB ensures operational continuity even during connectivity outages, delivering improved efficiency, full traceability, and a better experience for staff and patients alike.
 ```mermaid
 graph TD
@@ -36,6 +61,7 @@ graph TD
     note1 -.-> USRN
 ```
 ---
+<a id="ad-business-objectives"></a>
 ## Business Objectives
 The clinic aims to achieve the following strategic objectives:
 
@@ -43,19 +69,21 @@ The clinic aims to achieve the following strategic objectives:
 - **Client Management:** Maintain centralized digital records with a complete care history.
 - **Inventory Management:** Rigorous control of medical supplies, materials, and medications.
 - **Staff Management:** Control over attending physicians and residents, record of training activities.
-## Primary User Stories (UH)
-| Rank | UH ID      | Short Name                           | High/High Scenarios Supported   |
+<a id="ad-primary-user-stories"></a>
+## Primary User Stories (US)
+| Rank | US ID      | Short Name                           | High/High Scenarios Supported   |
 | ---- | ---------- | ------------------------------------ | ------------------------------- |
-| 1    | **UH-076** | Offline operation & synchronization  | REL-01, REL-02, USA-01          |
-| 2    | **UH-074** | Active branch selection              | SEC-02, ESC-02                  |
-| 3    | **UH-071** | Branch registration                  | SEC-02, ESC-02                  |
-| 4    | **UH-003** | Role-based permissions               | SEC-02                          |
-| 5    | **UH-026** | Record immutability                  | REL-02                          |
-| 6    | **UH-025** | Add consultation to record           | REL-01, USA-01                  |
-| 7    | **UH-004** | Full inventory view (Admin)          | PER-01                          |
-| 8    | **UH-024** | Create clinical record               | USA-01                          |
-| 9    | **UH-031** | Prescribe medications                | USA-01                          |
-| 10   | **UH-044** | Register payments                    | REL-01                          |
+| 1    | **US-076** | Offline operation & synchronization  | REL-01, REL-02, USA-01          |
+| 2    | **US-074** | Active branch selection              | SEC-02, ESC-02                  |
+| 3    | **US-071** | Branch registration                  | SEC-02, ESC-02                  |
+| 4    | **US-003** | Role-based permissions               | SEC-02                          |
+| 5    | **US-026** | Record immutability                  | REL-02                          |
+| 6    | **US-025** | Add consultation to record           | REL-01, USA-01                  |
+| 7    | **US-004** | Full inventory view (Admin)          | PER-01                          |
+| 8    | **US-024** | Create clinical record               | USA-01                          |
+| 9    | **US-031** | Prescribe medications                | USA-01                          |
+| 10   | **US-044** | Register payments                    | REL-01                          |
+<a id="ad-quality-attributes"></a>
 ## Quality Attributes
 | Scenario ID      | Quality Attribute   | Description                                                 |
 | ---------------- | ------------------- | ----------------------------------------------------------- |
@@ -65,7 +93,9 @@ The clinic aims to achieve the following strategic objectives:
 | REL-02           | Reliability         | Recovery from partial synchronization failure                 |
 | USA-01           | Usability           | Transparent offline operation during consultations            |
 | ESC-02           | Scalability         | Branch growth without performance degradation                 |
+<a id="ad-review-constraints"></a>
 ## Review Constraints
+<a id="ad-technical-constraints"></a>
 ### Technical Constraints
 | ID         | Constraint                                                                                                                                                  |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -75,14 +105,17 @@ The clinic aims to achieve the following strategic objectives:
 | **CON-04** | The backend must expose a **REST API** for all external integrations                                                                                        |
 | **CON-05** | **Diagnostic imaging (DICOM/PACS) is not supported**; laboratory results are captured strictly in text format                                               |
 
+<a id="ad-review-architectural-concerns"></a>
 ## **Review Architectural Concerns**
 
+<a id="ad-high-priority-overview"></a>
 # High-Priority Architectural Concerns — SICEB
 
 There are **35 high-priority concerns** out of a total of 45. The dominant cross-cutting theme is the **challenge of offline operation** and its implications for security, data consistency, and regulatory compliance.
 
 ---
 
+<a id="ad-sec-01-data"></a>
 ## 1. Data Management and Persistence (5)
 
 | ID | Concern |
@@ -95,6 +128,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-02-integration"></a>
 ## 2. Integration Architecture (3)
 
 | ID | Concern |
@@ -105,6 +139,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-03-security"></a>
 ## 3. Security Architecture (7)
 
 | ID | Concern |
@@ -119,6 +154,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-04-operational"></a>
 ## 4. Operational Architecture (3)
 
 | ID | Concern |
@@ -129,6 +165,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-05-development"></a>
 ## 5. Development Architecture (4)
 
 | ID | Concern |
@@ -140,6 +177,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-06-business"></a>
 ## 6. Business Architecture (1)
 
 | ID | Concern |
@@ -148,6 +186,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-07-compliance"></a>
 ## 7. Compliance and Legal Framework (3)
 
 | ID | Concern |
@@ -158,6 +197,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-08-sync"></a>
 ## 8. Synchronization and Conflict Resolution (6)
 
 | ID | Concern |
@@ -171,6 +211,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-09-ux"></a>
 ## 9. User Experience (1)
 
 | ID | Concern |
@@ -179,6 +220,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-sec-10-technical"></a>
 ## 10. Internal Technical Requirements (2)
 
 | ID | Concern |
@@ -188,6 +230,7 @@ There are **35 high-priority concerns** out of a total of 45. The dominant cross
 
 ---
 
+<a id="ad-distribution-by-category"></a>
 ## Distribution by Category
 
 ```mermaid
@@ -206,6 +249,7 @@ pie title High-Priority Concerns by Category
 
 ---
 
+<a id="ad-id-summary"></a>
 ## ID Summary
 
 | Priority | Count | IDs |
