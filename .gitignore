@@ -7,12 +7,12 @@ comparacionGemini.md
 comparacionGemini_v2.md
 
 # === Backend ===
-backend/target/
-backend/.mvn/wrapper/maven-wrapper.jar
+apps/backend/target/
+apps/backend/.mvn/wrapper/maven-wrapper.jar
 
 # === Frontend ===
-frontend/node_modules/
-frontend/dist/
+apps/frontend/node_modules/
+apps/frontend/dist/
 
 # === Environment ===
 .env

@@ -34,7 +34,7 @@ jobs:
           cache: 'maven'
 
       - name: Build & Test
-        working-directory: backend
+        working-directory: apps/backend
         env:
           DB_URL: jdbc:postgresql://localhost:5432/siceb_test
           DB_USER: siceb
@@ -56,16 +56,16 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: apps/frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: apps/frontend
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        working-directory: frontend
+        working-directory: apps/frontend
         run: pnpm lint
 
       - name: Type check
-        working-directory: frontend
+        working-directory: apps/frontend
         run: pnpm run build

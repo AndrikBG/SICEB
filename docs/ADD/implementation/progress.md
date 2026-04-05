@@ -124,7 +124,7 @@
   - All config via env vars (`.env` + `application.yml`)
   - README.md with quickstart and development commands
 - **Completed A1.1** (5/5 tasks): Dev environment and CI/CD
-  - Monorepo structure: `backend/` (Maven) + `frontend/` (pnpm)
+  - Monorepo structure: `apps/backend/` (Maven) + `apps/frontend/` (pnpm)
   - GitHub Actions CI with 2 parallel jobs (backend + frontend)
   - ESLint + TypeScript strict mode for frontend; Maven compiler for backend
 - **Verified full stack** runs: DB healthy, API `{"status":"UP"}`, PWA serving at :5173

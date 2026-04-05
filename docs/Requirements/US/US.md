@@ -1,3 +1,9 @@
+# User stories — phased rollout (deprecated)
+
+> **Deprecated.** This file is **no longer authoritative**. It was an early approximation of how user stories might be grouped and sequenced **before** the Attribute-Driven Design (ADD) process was applied. Actual scope, iteration order, and driver traceability are defined in **[`../../ADD/Design/IterationPlan.md`](../../ADD/Design/IterationPlan.md)**, the **[`../../ADD/implementation/`](../../ADD/implementation/)** specs and phase guides, and the per-story files **`US-*.md`** in this folder. Keep this document only for historical context.
+
+---
+
 ### **PHASE 1: Technical Foundations **
 
 | Order | ID | Story |

@@ -87,7 +87,7 @@ docker-compose.yml
 └── pwa (frontend/Dockerfile)
     ├── Port: 5173 (host) → 5173 (container)
     ├── Depends on: api
-    ├── Volume mount: ./frontend/src → /app/src (hot-reload)
+    ├── Volume mount: ./apps/frontend/src → /app/src (hot-reload)
     └── Env var: VITE_API_URL → http://localhost:8080
 ```
 

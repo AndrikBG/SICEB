@@ -54,7 +54,7 @@ docker compose logs -f pwa    # Follow PWA client logs
 ### Backend Only
 
 ```bash
-cd backend
+cd apps/backend
 mvn spring-boot:run           # Run with default profile
 mvn verify                    # Run all tests (unit + integration + architecture)
 mvn test                      # Run unit tests only
@@ -63,7 +63,7 @@ mvn test                      # Run unit tests only
 ### Frontend Only
 
 ```bash
-cd frontend
+cd apps/frontend
 pnpm install                  # Install dependencies
 pnpm dev                      # Start dev server with hot-reload
 pnpm build                    # Production build
@@ -84,25 +84,28 @@ docker compose down -v && docker compose up --build
 
 ```
 SICEB/
-├── backend/                 # Spring Boot API Server (Modular Monolith)
-│   ├── src/main/java/com/siceb/
-│   │   ├── config/          # Security, CORS, WebSocket configuration
-│   │   ├── shared/          # Shared Kernel (Money, EntityId, UtcDateTime)
-│   │   ├── platform/        # Platform modules (IAM, Branch, Audit, Sync)
-│   │   └── domain/          # Domain module stubs (10 bounded contexts)
-│   ├── src/main/resources/
-│   │   ├── application.yml  # Configuration (all via env vars)
-│   │   └── db/migration/    # Flyway SQL migrations
-│   ├── Dockerfile
-│   └── pom.xml
-├── frontend/                # React PWA Client
-│   ├── src/
-│   ├── Dockerfile
-│   └── package.json
+├── apps/
+│   ├── backend/             # Spring Boot API Server (Modular Monolith)
+│   │   ├── src/main/java/com/siceb/
+│   │   │   ├── config/      # Security, CORS, WebSocket configuration
+│   │   │   ├── shared/      # Shared Kernel (Money, EntityId, UtcDateTime)
+│   │   │   ├── platform/    # Platform modules (IAM, Branch, Audit, Sync)
+│   │   │   └── domain/      # Domain module stubs (10 bounded contexts)
+│   │   ├── src/main/resources/
+│   │   │   ├── application.yml
+│   │   │   └── db/migration/  # Flyway SQL migrations
+│   │   ├── Dockerfile
+│   │   └── pom.xml
+│   └── frontend/            # React PWA Client
+│       ├── src/
+│       ├── Dockerfile
+│       └── package.json
+├── docs/
+│   ├── ADD/                 # Attribute-Driven Design (architecture, iterations)
+│   └── Requirements/        # Vision, QA scenarios, user stories (US/)
 ├── docker-compose.yml       # Local development stack
 ├── .env.example             # Environment template
-├── .github/workflows/       # CI/CD pipeline
-└── ADD/                     # Architecture documentation
+└── .github/workflows/       # CI/CD pipeline
 ```
 
 ## Environment Variables
@@ -116,4 +119,4 @@ All configuration is externalized via environment variables. See `.env.example` 
 - **Offline-first**: PWA with IndexedDB sync queue and conflict resolution
 - **Cloud-ready**: Docker images portable to any PaaS (Cloud Run, ECS, App Service)
 
-See `ADD/` directory for full architectural documentation.
+See [`docs/ADD/`](docs/ADD/) for full architectural documentation and [`docs/Requirements/README.md`](docs/Requirements/README.md) for requirements and user stories.

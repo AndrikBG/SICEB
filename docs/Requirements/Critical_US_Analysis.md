@@ -87,7 +87,7 @@ This document identifies the most architecturally significant User Stories by cr
 
 ---
 
-## HIGH Priority User Stories (from Table_US.md)
+## HIGH Priority User Stories (from [Requirements/US/Table_US.md](US/Table_US.md))
 
 
 ### Authentication & Access Control

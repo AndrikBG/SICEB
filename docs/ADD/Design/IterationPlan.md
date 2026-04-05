@@ -12,7 +12,7 @@ This document defines the iteration plan for the Attribute-Driven Design (ADD) o
 **Driver sources:**
 
 - **US-xxx**: Top-ranked primary user stories by QA scenario support (from ArchitecturalDrivers.md)
-- **US-xxx**: User stories with explicit priority level (from Table_US.md)
+- **US-xxx**: User stories with explicit priority level (from [Requirements/US/Table_US.md](../../Requirements/US/Table_US.md))
 - **QA scenarios** (PER, SEC, REL, USA, ESC, AUD, MNT, IOP): Quality attribute scenarios (from Quality_Attribute_Scenarios.md)
 - **CRN-xx**: High-priority architectural concerns (from ArchitecturalDrivers.md)
 - **CON-xx**: Technical constraints (from ArchitecturalDrivers.md)
