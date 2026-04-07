@@ -29,7 +29,7 @@ export function BranchSelectionView() {
           </div>
 
           <div className="space-y-3">
-            {user.branches.map((branch) => (
+            {(user.branches ?? []).map((branch) => (
               <button
                 key={branch.id}
                 onClick={() => handleSelect(branch)}

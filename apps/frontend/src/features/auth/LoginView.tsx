@@ -23,7 +23,7 @@ export function LoginView() {
 
       if (result.mustChangePassword) {
         navigate('/change-password', { replace: true });
-      } else if (result.user.branches.length > 1) {
+      } else if ((result.user.branches?.length ?? 0) > 1) {
         navigate('/select-branch', { replace: true });
       } else {
         navigate('/', { replace: true });

@@ -1,13 +1,8 @@
 import { api } from './api-client';
 
-const DEV_BRANCH_ID = '00000000-0000-4000-a000-000000000001';
-const DEV_STAFF_ID = '00000000-0000-4000-b000-000000000001';
-
-function clinicalHeaders() {
-  return {
-    'X-Branch-Id': DEV_BRANCH_ID,
-    'X-Staff-Id': DEV_STAFF_ID,
-  };
+/** Contexto clínico va en el JWT (TenantFilter); no importar auth-store aquí para evitar ciclos de módulos. */
+function clinicalHeaders(): Record<string, string> {
+  return {};
 }
 
 export interface CreatePatientRequest {

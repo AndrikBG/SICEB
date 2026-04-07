@@ -44,6 +44,10 @@
 - [SD-07: Controlled Medication Prescription Blocked by Residency Policy](#arch-sd-07)
 - [SD-08: Admin Creates New Role](#arch-sd-08)
 - [SD-09: Patient Record Access with LFPDPPP Audit Logging](#arch-sd-09)
+- [SD-10: Register New Branch with Onboarding Workflow](#arch-sd-10)
+- [SD-11: Inventory Delta Command with Real-Time WebSocket Propagation](#arch-sd-11)
+- [SD-12: Branch Context Switch Without Logout](#arch-sd-12)
+- [SD-13: Admin Views Cross-Branch Inventory](#arch-sd-13)
 
 ### Section 8 — Interfaces (detail)
 
@@ -53,12 +57,18 @@
 - [8.4 — Identity & Access Query Interfaces](#arch-08-4)
 - [8.5 — Audit & Compliance Query Interfaces](#arch-08-5)
 - [8.6 — Interface-to-Driver Traceability](#arch-08-6)
+- [8.7 — Branch Management Command Interfaces](#arch-08-7)
+- [8.8 — Branch Management Query Interfaces](#arch-08-8)
+- [8.9 — Inventory Command Interfaces](#arch-08-9)
+- [8.10 — Inventory Query Interfaces](#arch-08-10)
+- [8.11 — Tariff Management Interfaces](#arch-08-11)
 
 ### Section 9 — Design decisions (detail)
 
 - [Iteration 1 — Establish Overall System Structure](#arch-iter-1)
 - [Iteration 2 — Core Clinical Workflow and Medical Records](#arch-iter-2)
 - [Iteration 3 — Security, Access Control, and Audit Infrastructure](#arch-iter-3)
+- [Iteration 4 — Multi-Branch Operations and Inventory Management](#arch-iter-4)
 
 ---
 
@@ -724,14 +734,14 @@ graph TB
 | **Prescriptions**      | Domain   | Prescription creation within consultation context via `PrescriptionCommandHandler` appending to the clinical event stream; prescription item management; prescriber permission validation based on residency level — fully enforced by the `AuthorizationMiddleware` and `ResidencyLevelPolicy` in the security middleware pipeline (Iteration 3): R1, R2, R3 residents are blocked from prescribing controlled medications, and all residency levels are validated against their permitted actions before the handler executes; prescription status lifecycle                                                                                                                                                                                                                                                                                                                                   |
 | **Pharmacy**           | Domain   | Medication catalog management; dispensation event recording with 8-field traceability for controlled substances; inventory deduction upon dispensation; prescription validation before dispensing                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | **Laboratory**         | Domain   | Laboratory study request lifecycle via `LabStudyCommandHandler` appending to the clinical event stream; prepayment verification; text-only result entry as separate `LaboratoryResult` events per CON-05; result availability in patient medical record via `ClinicalTimelineReadModel`; `PendingLabStudiesReadModel` for lab technician work queues                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **Inventory**          | Domain   | Branch-scoped stock tracking for medications and medical supplies; all stock mutations recorded as intent-based delta commands per CRN-43 and CRN-44; current stock is a materialized view derived from applying the ordered delta sequence; minimum threshold configuration; low-stock alert generation; expiration date tracking; no outgoing domain dependencies — designed as a dependency leaf                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Inventory**          | Domain   | Branch-scoped stock tracking for medications and medical supplies via CQRS: command side processes five delta command types (IncrementStock, DecrementStock, AdjustStock, SetMinimumThreshold, UpdateExpiration) through `InventoryCommandHandler` and persists them to the append-only `InventoryDeltaStore`; current stock atomically materialized via PostgreSQL `AFTER INSERT` trigger on delta table; read side maintains `BranchInventoryReadModel` (cross-branch admin and service-scoped views), `LowStockAlertProjection`, and `ExpirationAlertProjection`; real-time propagation via `pg_notify` to WebSocket infrastructure for PER-01; optimistic concurrency with `SELECT ... FOR UPDATE` per item within a branch (CRN-35); tables partitioned by `branch_id` for ESC-02 scalability; no outgoing domain dependencies — designed as a dependency leaf                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | **Supply Chain**       | Domain   | Supply request creation with justification; multi-step approval workflow; delivery recording; receipt confirmation; branch inventory update upon delivery                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | **Scheduling**         | Domain   | Appointment creation and management; physician agenda views; cancellation and rescheduling with documented reasons                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| **Billing & Payments** | Domain   | Payment registration for consultations, pharmacy, and laboratory; service tariff configuration with `DECIMAL(19,4)` precision; receipt generation; future CFDI integration point                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Billing & Payments** | Domain   | Payment registration for consultations, pharmacy, and laboratory; service tariff configuration via `TariffManagementService` using temporal effective-date pattern — each `ServiceTariff` carries `effectiveFrom` timestamp, active tariff resolved as `MAX(effectiveFrom) WHERE effectiveFrom <= NOW()`, historical tariffs immutable so past charges are unaffected by price changes; tariff CRUD restricted to Director General and General Administrator via `tariff:manage` permission; all monetary values stored as `DECIMAL(19,4)` with banker's rounding; receipt generation; future CFDI integration point                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | **Reporting**          | Domain   | Consolidated financial reports across branches; operational dashboards; read-only access to Billing, Inventory, and Clinical Care data via dedicated read models                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | **Training**           | Domain   | Workshop request and approval workflow; attendance tracking; future exposure to external academic systems via REST API                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | **Identity & Access**  | Platform | Authentication via `AuthenticationService` (credential validation, JWT issuance with embedded claims for role, permissions, residency level, branch assignments, and consent scopes; refresh token management; `TokenDenyList` for immediate revocation of deactivated users). Authorization via `AuthorizationMiddleware` evaluating three dimensions on every request: role permissions, branch assignment, and residency-level restrictions. `ResidencyLevelPolicy` encodes R1–R4 hierarchical action rules (R1/R2/R3 blocked from controlled substance prescribing; R1/R2 mandatory supervision). Data-driven `RolePermissionModel` storing roles, permissions, and mappings in database — admin-configurable without code changes (MNT-03). `UserManagementService` for user CRUD with branch assignment and medical staff registration including residency level and supervisor assignment |
-| **Branch Management**  | Platform | Branch registration and activation/deactivation; active branch selection and context switching; `branch_id` injection into request context for tenant-scoped queries                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Branch Management**  | Platform | Branch lifecycle via `BranchRegistrationService` — registration with unique name/address validation, activation, deactivation (preserves history, blocks new operations); `BranchOnboardingOrchestrator` executes a 5-step idempotent workflow after registration (database partition creation, service catalog seeding, tariff copying, inventory initialization, completion marking) with progress tracking in `branch_onboarding_status` table for ESC-01; `BranchContextService` handles mid-session active branch switching — validates user assignment, issues new JWT with updated `activeBranchId`, resets PostgreSQL RLS session variable, without requiring re-authentication (ESC-03); `branch_id` injection into request context for tenant-scoped queries                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | **Audit & Compliance** | Platform | `AuditEventReceiver` ingests audit events from two sources: the security middleware pipeline (access events for every request) and domain modules (clinical writes, future pharmacy/inventory events). `ImmutableAuditStore` persists events as SHA-256 hash-chained entries in an INSERT-only PostgreSQL table (UPDATE, DELETE, TRUNCATE revoked from application DB role) — tamper-evident even against DBA modification (CRN-18). Supports synchronous ingestion for security-critical events and asynchronous for high-volume access logs. `AuditQueryService` exposes query interfaces for entity audit trails, user activity logs, patient access logs (LFPDPPP), and on-demand chain integrity verification. `LfpdpppComplianceTracker` manages patient consent lifecycle and ARCO request workflows (Access, Rectification, Cancellation, Opposition) with legal deadline tracking       |
 | **Synchronization**    | Platform | Offline sync queue management; conflict detection and resolution via delta-based commands; data reconciliation between Local Storage and Cloud Database; asynchronous business compensation for offline regulatory violations (CRN-45); Service Worker background sync orchestration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | **Shared Kernel**      | Shared   | `Money` value type with `DECIMAL(19,4)` and banker's rounding; `UtcDateTime` value type enforcing UTC storage; `EntityId` based on UUID (no auto-increment sequences permitted); `IdempotencyKey` for safe command retry during sync; standardized error codes and base entity types                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -945,6 +955,167 @@ graph LR
 | **ErrorSanitizer**        | 6     | Terminal filter that intercepts all error responses — including unhandled exceptions from domain modules. Strips stack traces, internal entity names, database details, and SQL fragments. Returns a standardized error envelope: `{ code, message, correlationId }`. The `correlationId` links to the full internal error in server-side logs for debugging. Validation errors from domain modules are passed through with their user-facing messages intact. | N/A — wraps the response                                                                    | CRN-13, SEC-04                         |
 
 
+##### 6.1.5 — Branch Management Module Internals (Iteration 4)
+
+This component diagram decomposes the **Branch Management** platform module into its internal components. The `BranchRegistrationService` handles branch lifecycle operations. The `BranchOnboardingOrchestrator` executes the multi-step branch setup workflow. The `BranchContextService` manages active branch selection and mid-session context switching with JWT re-issuance. The `BranchConfigurationStore` persists branch-specific settings and onboarding progress.
+
+```mermaid
+graph TB
+    subgraph bm_module [Branch Management Module]
+        direction TB
+        subgraph bm_lifecycle [Lifecycle]
+            BRS[BranchRegistrationService<br/>Register, activate, deactivate branches]
+            BOO[BranchOnboardingOrchestrator<br/>5-step idempotent onboarding workflow]
+        end
+        subgraph bm_context [Context]
+            BCS[BranchContextService<br/>Active branch selection,<br/>mid-session switch with JWT re-issuance]
+        end
+        subgraph bm_config [Configuration]
+            BCFS[BranchConfigurationStore<br/>Branch settings, onboarding status,<br/>service catalog per branch]
+        end
+    end
+
+    subgraph iam [Identity & Access]
+        AS[AuthenticationService<br/>JWT re-issuance for branch switch]
+    end
+
+    subgraph db_branch [Cloud Database — Branch Schema]
+        DBB[branches / branch_onboarding_status /<br/>branch_service_catalog]
+    end
+
+    subgraph audit_sink [Audit & Compliance]
+        AER[AuditEventReceiver]
+    end
+
+    BRS --> BCFS
+    BRS --> BOO
+    BOO --> BCFS
+    BCS --> AS
+    BCS --> BCFS
+    BCFS --> DBB
+
+    BRS -.-> AER
+    BCS -.-> AER
+    BOO -.-> AER
+```
+
+
+
+##### Branch Management Module — Internal Component Responsibilities
+
+
+| Component | Responsibilities | Key Drivers |
+|---|---|---|
+| **BranchRegistrationService** | Handles `RegisterBranch` command: validates unique branch name and address, persists branch record with `isActive = true`, triggers `BranchOnboardingOrchestrator`. Handles `DeactivateBranch` command: sets `isActive = false`, preserves all historical data, prevents new operations. Emits audit events for both lifecycle actions. | US-071, ESC-01 |
+| **BranchOnboardingOrchestrator** | Executes a deterministic 5-step idempotent sequence after branch registration: (1) create database partitions for `inventory_items` and `inventory_deltas` tables, (2) seed default service catalog entries from the organization template, (3) copy active tariff catalog to the new branch, (4) initialize empty inventory items per service, (5) mark branch as `onboarding_complete`. Each step records progress in `branch_onboarding_status` table for resumability. Designed to complete within ESC-01 target (<1 hour). | US-071, ESC-01 |
+| **BranchContextService** | Handles `SwitchBranch` command for mid-session branch context switching: validates user is assigned to the target branch (from JWT `branchAssignments`), delegates to `AuthenticationService` for JWT re-issuance with updated `activeBranchId` claim, sets PostgreSQL RLS session variable `app.current_branch_id` to the new branch. Does not require re-authentication — satisfies ESC-03 (<3 seconds without logout). Also handles initial post-login branch selection. | US-074, ESC-03, SEC-02 |
+| **BranchConfigurationStore** | Persistence layer for branch records, onboarding progress tracking, and branch-scoped service catalog configuration. Stores branch settings including name, address, `isActive` status, `onboardingComplete` flag. Provides queries for `ListBranches`, `GetBranch`, and `GetOnboardingStatus`. | US-071, ESC-01 |
+
+
+##### 6.1.6 — Inventory Module Internals (Iteration 4)
+
+This component diagram decomposes the **Inventory** domain module into its CQRS structure. The **command side** receives inventory delta commands and persists them to the append-only `InventoryDeltaStore`. A PostgreSQL trigger atomically materializes the current stock on every delta insertion, eliminating any eventual consistency gap. The **read side** maintains projections for branch-scoped inventory views, low-stock alerts, and expiration alerts. The delta store publishes change notifications via `pg_notify` to bridge to the WebSocket real-time infrastructure (§6.1.7).
+
+```mermaid
+graph TB
+    subgraph inv_module [Inventory Module]
+        direction TB
+        subgraph inv_write [Command Side]
+            ICH[InventoryCommandHandler<br/>IncrementStock, DecrementStock,<br/>AdjustStock, SetMinimumThreshold,<br/>UpdateExpiration]
+            IDS[InventoryDeltaStore<br/>Append-only delta persistence,<br/>idempotency key validation]
+        end
+        subgraph inv_read [Read Side]
+            BIR[BranchInventoryReadModel<br/>Admin cross-branch view,<br/>service-scoped view]
+            LSA[LowStockAlertProjection<br/>OK / LOW_STOCK / OUT_OF_STOCK]
+            EAP[ExpirationAlertProjection<br/>OK / EXPIRING_SOON / EXPIRED]
+        end
+    end
+
+    subgraph db_inv [Cloud Database — Inventory Schema]
+        DBI[inventory_items partitioned by branch_id /<br/>inventory_deltas partitioned by branch_id]
+        TRG[StockMaterializationTrigger<br/>AFTER INSERT on inventory_deltas]
+        PGN[pg_notify - inventory_changes]
+    end
+
+    subgraph audit_sink [Audit & Compliance]
+        AER[AuditEventReceiver]
+    end
+
+    ICH --> IDS
+    IDS --> DBI
+    DBI --> TRG
+    TRG --> DBI
+    TRG --> PGN
+    BIR --> DBI
+    LSA --> DBI
+    EAP --> DBI
+
+    ICH -.-> AER
+```
+
+
+
+##### Inventory Module — Internal Component Responsibilities
+
+
+| Component | Side | Responsibilities | Key Drivers |
+|---|---|---|---|
+| **InventoryCommandHandler** | Command | Processes five delta command types: `IncrementStock(itemId, quantity, reason, sourceRef)`, `DecrementStock(itemId, quantity, reason, sourceRef)`, `AdjustStock(itemId, absoluteQuantity, reason)`, `SetMinimumThreshold(itemId, threshold)`, `UpdateExpiration(itemId, expirationDate)`. Validates item exists and belongs to the active branch. Uses `SELECT ... FOR UPDATE` on the `inventory_items` row for concurrency serialization within a branch. Validates `DecrementStock` will not produce negative stock. Delegates persistence to `InventoryDeltaStore`. Emits audit events for all mutations. | CRN-44, CRN-35, CRN-43 |
+| **InventoryDeltaStore** | Command | Append-only persistence layer for inventory deltas. Each delta carries: `delta_id (UUID)`, `item_id`, `branch_id`, `delta_type`, `quantity_change`, `absolute_quantity`, `reason`, `source_ref`, `staff_id`, `timestamp (TIMESTAMPTZ)`, `idempotency_key (UNIQUE)`, `sequence_number`. Validates idempotency key uniqueness to prevent duplicate writes during offline sync replay. Insertion triggers `StockMaterializationTrigger`. | CRN-44, CRN-43 |
+| **StockMaterializationTrigger** | Database | PostgreSQL `AFTER INSERT` trigger function on `inventory_deltas`. Applies the delta to `inventory_items.current_stock` atomically within the same transaction: INCREMENT adds, DECREMENT subtracts (raises error if result < 0), ADJUST sets absolute value. After materialization, executes `pg_notify('inventory_changes', json_payload)` to trigger real-time WebSocket propagation. | CRN-44, CRN-35, PER-01 |
+| **BranchInventoryReadModel** | Read | Denormalized projection combining `inventory_items`, `medical_supplies`, `medications`, and `medical_services` into a query-optimized view. Two access patterns: (1) Admin cross-branch — aggregates all branches, grouped by service, with filters by category, status, and service; uses `admin_reporting` RLS bypass (US-004). (2) Service-scoped — filtered by `branch_id` (RLS) and `service_id` for Service Managers and physicians (US-005). Supports sorting, pagination (50 items/page), and search by name/SKU. | US-004, US-005, PER-01 |
+| **LowStockAlertProjection** | Read | Flags inventory items based on stock level relative to minimum threshold: `OK` (stock >= threshold), `LOW_STOCK` (stock < threshold and stock > 0), `OUT_OF_STOCK` (stock = 0). Updated by the stock materialization trigger. Alert status included in both REST query responses and WebSocket inventory change events. | US-004, US-005 |
+| **ExpirationAlertProjection** | Read | Categorizes inventory items by expiration status: `OK` (>30 days from expiry), `EXPIRING_SOON` (<=30 days), `EXPIRED` (past date). Computed daily via a scheduled job and on-demand during inventory queries. Expiration status included in inventory views as color-coded indicators. | US-004 |
+
+
+##### 6.1.7 — WebSocket Real-Time Event Infrastructure (Iteration 4)
+
+This component diagram shows the real-time event infrastructure that enables PER-01 (<2-second inventory update propagation). The `RealtimeEventPublisher` listens to PostgreSQL `pg_notify` notifications and publishes structured STOMP messages to tenant-scoped WebSocket channels. The `WebSocketSecurityInterceptor` authenticates connections via JWT and authorizes subscriptions to prevent cross-branch data leakage.
+
+```mermaid
+graph TB
+    subgraph ws_infra [WebSocket Real-Time Infrastructure]
+        direction TB
+        REP[RealtimeEventPublisher<br/>Listens pg_notify,<br/>publishes to STOMP topics]
+        WSI[WebSocketSecurityInterceptor<br/>JWT on CONNECT,<br/>subscription authorization]
+    end
+
+    subgraph stomp_topics [STOMP Topics]
+        BT["/topic/branch/branchId/inventory"<br/>Per-branch inventory events]
+        AT["/topic/admin/inventory"<br/>All-branch events for admins]
+    end
+
+    subgraph db [Cloud Database]
+        PGN[pg_notify<br/>inventory_changes channel]
+    end
+
+    subgraph pwa_clients [Connected PWA Clients]
+        C1[Branch A users]
+        C2[Branch B users]
+        CA[Admin users]
+    end
+
+    PGN --> REP
+    REP --> BT
+    REP --> AT
+    WSI --> BT
+    WSI --> AT
+    BT --> C1
+    BT --> C2
+    AT --> CA
+```
+
+
+
+##### WebSocket Real-Time Infrastructure — Component Responsibilities
+
+
+| Component | Responsibilities | Key Drivers |
+|---|---|---|
+| **RealtimeEventPublisher** | Listens to PostgreSQL `pg_notify('inventory_changes')` notifications via a persistent JDBC listener connection. Deserializes the JSON payload containing `branchId`, `itemId`, `deltaType`, `newStock`, `stockStatus`, and `timestamp`. Publishes a structured STOMP message to `/topic/branch/{branchId}/inventory` for the specific branch. Simultaneously publishes to `/topic/admin/inventory` for admin subscribers. Designed for sub-second processing latency to satisfy PER-01 (<2-second end-to-end). | PER-01, ESC-02 |
+| **WebSocketSecurityInterceptor** | Validates JWT on STOMP CONNECT frame — extracts `activeBranchId` and `permissions` from claims. Authorizes SUBSCRIBE requests: users may only subscribe to `/topic/branch/{branchId}/inventory` if `branchId` matches their `activeBranchId` or they hold `inventory:read_all` permission. Admin wildcard subscription to `/topic/admin/inventory` requires `inventory:read_all`. Rejects unauthorized subscriptions with STOMP ERROR frame. Periodically validates token expiry; disconnects clients with expired tokens. Handles reconnection with re-authentication. | SEC-02, PER-01, ESC-02 |
+
+
 <a id="arch-06-pwa"></a>
 #### 6.2 — SICEB PWA Client Components
 
@@ -1071,6 +1242,57 @@ graph TB
 | **RoleConfigurationView** | Admin interface for creating new roles and assigning permissions from the system permission catalog. Displays the permission matrix with categories and checkboxes. Validates against regulatory constraints (prevents combining `controlled_med:prescribe` with R1–R3 residency levels). Only rendered for users with `role:manage` permission. Enables MNT-03: new roles operational in under 30 minutes with zero code changes.                      | MNT-03, US-003, CRN-15 |
 
 
+##### 6.2.3 — PWA Branch and Inventory Components (Iteration 4)
+
+This diagram refines the PWA client's `UI Components` and `State Management` for branch management, inventory visualization, tariff configuration, and real-time inventory updates introduced in Iteration 4. The `InventoryRealtimeManager` manages WebSocket subscriptions for live inventory updates. The `BranchSelectionView` is extended to support mid-session context switching without logout.
+
+```mermaid
+graph TB
+    subgraph pwa_branch_inv [PWA Client — Branch and Inventory]
+        BMV[BranchManagementView<br/>Branch CRUD, onboarding progress]
+        IDV[InventoryDashboardView<br/>Admin cross-branch inventory grid,<br/>filters, sorting, search, export]
+        SIV[ServiceInventoryView<br/>Service-scoped inventory for managers]
+        TCV[TariffConfigurationView<br/>Tariff CRUD, effective dates]
+    end
+
+    subgraph pwa_state_inv [State Management — Branch and Inventory]
+        IRM[InventoryRealtimeManager<br/>WebSocket subscription lifecycle,<br/>auto-reconnect, branch re-subscription]
+    end
+
+    subgraph pwa_existing [Existing Components - Updated]
+        BSV[BranchSelectionView<br/>Extended: mid-session switch,<br/>cache clearing, WS re-subscription]
+    end
+
+    subgraph pwa_api [API Client]
+        RC[REST Client<br/>Branch, inventory, tariff commands/queries]
+        WSC[WebSocket Client<br/>STOMP over WSS]
+    end
+
+    BMV --> RC
+    IDV --> IRM
+    SIV --> IRM
+    TCV --> RC
+    BSV --> RC
+    BSV --> IRM
+    IRM --> WSC
+    IRM --> RC
+```
+
+
+
+##### PWA Branch and Inventory — Component Responsibilities
+
+
+| Component | Responsibilities | Key Drivers |
+|---|---|---|
+| **BranchManagementView** | Admin interface for registering new branches (name, address), viewing branch list with status (active/inactive/onboarding), and deactivating branches. Displays onboarding progress during registration with step-by-step completion indicators. Only rendered for users with `branch:manage` permission via `RoleAwareRenderer`. | US-071, ESC-01 |
+| **InventoryDashboardView** | Renders the full inventory grid for General Administrator: grouped by service, filterable by category/status/service/branch, sortable by any column, searchable by name/SKU, paginated (50 items/page). Items display color-coded status indicators: OK = white, LOW_STOCK = yellow, EXPIRING_SOON = orange, EXPIRED = red. Detail panel on item selection showing all fields per US-004. Export to Excel. Receives real-time updates from `InventoryRealtimeManager`. | US-004, PER-01 |
+| **ServiceInventoryView** | Renders the service-scoped inventory for Service Managers and physicians. Same layout as `InventoryDashboardView` but pre-filtered to the user's assigned service — items from other services are never rendered (not merely hidden). Export includes only the user's service items. Unauthorized direct URL access returns 403 and is logged. Only rendered for users with `inventory:read_service` permission. | US-005, SEC-02 |
+| **TariffConfigurationView** | Admin interface for creating and updating service tariffs. Displays tariff catalog with service name, code, current price, and effective date. Supports creating new tariffs with effective-from date, updating prices for future dates. Price field validates non-negative `DECIMAL` input. Search across tariff catalog. Only rendered for users with `tariff:manage` permission. | US-064 |
+| **InventoryRealtimeManager** | State management component that manages WebSocket subscription lifecycle for real-time inventory updates. Subscribes to `/topic/branch/{activeBranchId}/inventory` on inventory view load (or `/topic/admin/inventory` for admins). Processes incoming STOMP messages with inventory change events and triggers UI re-renders on `InventoryDashboardView` and `ServiceInventoryView`. Handles WebSocket disconnection with auto-reconnect and exponential backoff. On branch context switch: unsubscribes from old branch channel, subscribes to new. | PER-01, ESC-03 |
+| **BranchSelectionView** (updated) | Extended to support mid-session branch context switching (ESC-03) in addition to the initial post-login selection. When user selects a different branch mid-session: (1) confirms if there is unsaved work, (2) calls `POST /session/branch` via API Client, (3) stores new JWT via `SessionManager`, (4) clears branch-scoped IndexedDB cache via `LocalStorageManager`, (5) triggers `InventoryRealtimeManager` to re-subscribe to new branch WebSocket channel, (6) reloads dashboard with new branch data. Single-branch users continue to auto-select and skip. | US-074, ESC-03, SEC-02 |
+
+
 <a id="arch-07-seq"></a>
 ### 7.- Sequence diagrams
 
@@ -1180,6 +1402,8 @@ sequenceDiagram
 
 
 After branch selection, the `activeBranchId` is embedded in the JWT and set as a PostgreSQL session variable via the `TenantContextInjector` middleware. Row-Level Security policies automatically filter all tenant-scoped tables by this value, providing defense-in-depth below the application-level filtering. The `SessionManager` monitors the JWT TTL and triggers automatic refresh before expiry, maintaining a seamless session without re-authentication.
+
+> **Iteration 4 note (ESC-03):** This diagram shows the initial post-login branch selection. For mid-session branch context switching — where a multi-branch user changes their active branch without logging out — see [SD-12: Branch Context Switch Without Logout](#arch-sd-12). The mid-session flow reuses the JWT re-issuance and RLS reset mechanisms shown here, but adds IndexedDB cache clearing and WebSocket channel re-subscription.
 
 <a id="arch-sd-03"></a>
 #### SD-03: Create Patient and Medical Record (Iteration 2)
@@ -1560,6 +1784,239 @@ sequenceDiagram
 
 This flow demonstrates US-066 (audit log for record access) and CRN-32 (LFPDPPP compliance). The `AuditInterceptor` captures the access event asynchronously to avoid adding latency to the clinical query, while the `ImmutableAuditStore` ensures the entry is hash-chained and tamper-evident. The `GetAccessLogForPatient` query in `AuditQueryService` can later retrieve all access events for a specific patient to support ARCO requests or regulatory audits.
 
+<a id="arch-sd-10"></a>
+#### SD-10: Register New Branch with Onboarding Workflow (Iteration 4)
+
+This sequence diagram shows an Administrator registering a new branch and the `BranchOnboardingOrchestrator` executing the 5-step idempotent onboarding sequence. Each step records progress for resumability. The complete workflow targets ESC-01 (<1 hour for full branch operability).
+
+```mermaid
+sequenceDiagram
+    actor Admin as Administrator
+    participant BMV as BranchManagementView
+    participant AC as API Client
+    participant AF as AuthenticationFilter
+    participant AZF as AuthorizationFilter
+    participant BRS as BranchRegistrationService
+    participant BOO as BranchOnboardingOrchestrator
+    participant BCFS as BranchConfigurationStore
+    participant DB as Cloud Database
+    participant AER as AuditEventReceiver
+
+    Admin->>BMV: Enter branch name and address
+    BMV->>AC: POST /branches with RegisterBranch command
+    AC->>AF: HTTPS + JWT
+    AF->>AZF: Validate branch:manage permission
+    AZF->>BRS: Authorized
+
+    BRS->>BCFS: Validate unique name and address
+    BCFS->>DB: SELECT existing branches
+    DB-->>BCFS: No duplicates
+    BRS->>BCFS: Persist branch record isActive=true
+    BCFS->>DB: INSERT INTO branches
+    DB-->>BCFS: Branch persisted
+    BRS->>AER: Emit audit event — branch registered
+
+    BRS->>BOO: Trigger onboarding for branchId
+
+    BOO->>DB: Step 1 — CREATE PARTITION for inventory_items and inventory_deltas
+    BOO->>BCFS: Record step 1 complete
+    BCFS->>DB: UPDATE branch_onboarding_status
+
+    BOO->>DB: Step 2 — Seed service catalog from org template
+    BOO->>BCFS: Record step 2 complete
+
+    BOO->>DB: Step 3 — Copy active tariffs to new branch
+    BOO->>BCFS: Record step 3 complete
+
+    BOO->>DB: Step 4 — Initialize empty inventory items per service
+    BOO->>BCFS: Record step 4 complete
+
+    BOO->>BCFS: Step 5 — Mark onboarding_complete = true
+    BCFS->>DB: UPDATE branches SET onboarding_complete = true
+    BOO->>AER: Emit audit event — onboarding completed
+
+    BOO-->>BRS: Onboarding complete
+    BRS-->>AC: 201 Created with branchId + onboarding status
+    AC-->>BMV: Display success with onboarding summary
+    BMV-->>Admin: New branch operational — ready for user assignment
+
+    Note over BOO,DB: Each step is idempotent and resumable.<br/>Progress tracked in branch_onboarding_status.<br/>Target: complete in less than 1 hour - ESC-01.
+```
+
+
+
+This flow satisfies US-071 (branch registration) and ESC-01 (new branch operational in <1 hour). The onboarding orchestrator executes all five steps in sequence, with each step recording its completion status. If the process is interrupted (e.g., network failure), it can be resumed from the last completed step without repeating previous steps.
+
+<a id="arch-sd-11"></a>
+#### SD-11: Inventory Delta Command with Real-Time WebSocket Propagation (Iteration 4)
+
+This sequence diagram illustrates the end-to-end flow of an inventory mutation: a physician uses supplies during a consultation, triggering a `DecrementStock` delta command. The delta is persisted, stock is atomically materialized via a PostgreSQL trigger, `pg_notify` fires, and the `RealtimeEventPublisher` pushes a STOMP message to all connected clients on the branch channel — all within the PER-01 target of <2 seconds.
+
+```mermaid
+sequenceDiagram
+    actor Physician
+    participant CW as ConsultationWizard
+    participant AC as API Client
+    participant API as SICEB API Server
+    participant ICH as InventoryCommandHandler
+    participant IDS as InventoryDeltaStore
+    participant DB as Cloud Database
+    participant TRG as StockMaterializationTrigger
+    participant PGN as pg_notify
+    participant REP as RealtimeEventPublisher
+    participant WSC as WebSocket Channel
+    participant IRM as InventoryRealtimeManager
+    participant IDV as InventoryDashboardView
+    participant AER as AuditEventReceiver
+
+    Physician->>CW: Record supply usage during consultation
+    CW->>AC: POST /inventory/decrements with DecrementStock command + IdempotencyKey
+    AC->>API: HTTPS + JWT
+    API->>ICH: Route to Inventory module
+
+    ICH->>DB: SELECT ... FOR UPDATE on inventory_items row
+    DB-->>ICH: Row locked, current_stock = 50
+
+    ICH->>ICH: Validate: 50 - 3 >= 0
+    ICH->>IDS: Persist delta: DECREMENT, qty=3, reason=consultation_usage
+    IDS->>DB: INSERT INTO inventory_deltas with idempotency_key
+
+    DB->>TRG: AFTER INSERT trigger fires
+    TRG->>DB: UPDATE inventory_items SET current_stock = 47
+    TRG->>PGN: pg_notify inventory_changes with JSON payload
+
+    DB-->>IDS: Delta persisted, stock materialized
+    IDS-->>ICH: Success
+    ICH->>AER: Emit audit event — inventory decremented
+
+    ICH-->>API: Updated stock = 47, status = OK
+    API-->>AC: 200 OK
+    AC-->>CW: Supply usage recorded
+
+    PGN->>REP: Notification received
+    REP->>WSC: Publish STOMP to /topic/branch/branchId/inventory
+    WSC->>IRM: STOMP message received
+    IRM->>IDV: Update item stock: 47, status: OK
+    IDV->>IDV: Re-render inventory row with updated values
+
+    Note over TRG,IDV: End-to-end latency target: less than 2 seconds - PER-01.<br/>Delta is append-only - CRN-44.<br/>Stock materialization is transactional - CRN-35.
+```
+
+
+
+This flow demonstrates four key architectural decisions working together: (1) delta-based mutations (CRN-44) — the stock change is recorded as an intent command, not an absolute state overwrite; (2) transactional materialization (CRN-35) — the trigger updates `current_stock` atomically within the same transaction as the delta insertion; (3) real-time propagation (PER-01) — `pg_notify` bridges the database event to the WebSocket layer without polling; (4) concurrency control — `SELECT ... FOR UPDATE` prevents lost updates when multiple physicians use the same supply concurrently.
+
+<a id="arch-sd-12"></a>
+#### SD-12: Branch Context Switch Without Logout (Iteration 4)
+
+This sequence diagram shows a multi-branch user switching their active branch mid-session without logging out. The flow re-issues the JWT with the new `activeBranchId`, resets the PostgreSQL RLS session variable, clears the branch-scoped IndexedDB cache, and re-subscribes to the new branch's WebSocket channel — all within the ESC-03 target of <3 seconds.
+
+```mermaid
+sequenceDiagram
+    actor User as Multi-Branch User
+    participant BSV as BranchSelectionView
+    participant SM as SessionManager
+    participant LSM as LocalStorageManager
+    participant IRM as InventoryRealtimeManager
+    participant AC as API Client
+    participant WSC as WebSocket Client
+    participant BCS as BranchContextService
+    participant AS as AuthenticationService
+    participant DB as Cloud Database
+    participant AER as AuditEventReceiver
+
+    User->>BSV: Select Branch B as active branch
+    BSV->>BSV: Check for unsaved work — prompt if needed
+    BSV->>SM: Request branch switch to Branch B
+
+    SM->>AC: POST /session/branch with branchId=B + JWT
+    AC->>BCS: SwitchBranch command
+    BCS->>DB: Verify user assigned to Branch B
+    DB-->>BCS: Assignment confirmed
+
+    BCS->>AS: Re-issue JWT with activeBranchId=B
+    AS->>AS: Build new JWT preserving all claims, updating activeBranchId
+    AS-->>BCS: New JWT
+
+    BCS->>DB: SET app.current_branch_id = B for RLS
+    BCS->>AER: Emit audit event — branch context switched
+    BCS-->>AC: New JWT + branch context established
+    AC-->>SM: Store new JWT in memory
+
+    SM->>LSM: Clear branch-scoped IndexedDB cache for old branch
+    LSM->>LSM: Purge cached data for Branch A
+
+    SM->>IRM: Re-subscribe to new branch channel
+    IRM->>WSC: UNSUBSCRIBE from /topic/branch/A/inventory
+    IRM->>WSC: SUBSCRIBE to /topic/branch/B/inventory
+    WSC-->>IRM: Subscription confirmed
+
+    SM-->>BSV: Branch switch complete
+    BSV->>AC: Reload dashboard data for Branch B
+    AC-->>BSV: Branch B data
+    BSV-->>User: Dashboard displays Branch B context
+
+    Note over User,DB: Total time target: less than 3 seconds - ESC-03.<br/>No re-authentication required.<br/>Cache cleared to prevent cross-branch data leakage - SEC-02.
+```
+
+
+
+This flow satisfies US-074 (active branch selection), ESC-03 (<3 seconds without logout), and SEC-02 (no cross-branch data leakage). The key operations are: (1) JWT re-issuance without password re-entry — only the `activeBranchId` claim changes; (2) RLS session variable reset — PostgreSQL immediately enforces the new branch scope; (3) IndexedDB cache clearing — prevents offline queries from returning stale data from the previous branch; (4) WebSocket re-subscription — ensures real-time events come from the correct branch.
+
+<a id="arch-sd-13"></a>
+#### SD-13: Admin Views Cross-Branch Inventory (Iteration 4)
+
+This sequence diagram shows a General Administrator accessing the inventory dashboard with cross-branch visibility. The request activates the `admin_reporting` RLS bypass, queries across all branch partitions, and subscribes to the admin WebSocket channel for real-time updates from all branches.
+
+```mermaid
+sequenceDiagram
+    actor Admin as General Administrator
+    participant IDV as InventoryDashboardView
+    participant IRM as InventoryRealtimeManager
+    participant AC as API Client
+    participant WSC as WebSocket Client
+    participant AF as AuthenticationFilter
+    participant AZF as AuthorizationFilter
+    participant TCI as TenantContextInjector
+    participant INV as Inventory Module
+    participant BIR as BranchInventoryReadModel
+    participant DB as Cloud Database
+    participant REP as RealtimeEventPublisher
+
+    Admin->>IDV: Open Inventory Management
+    IDV->>IRM: Initialize real-time subscription
+    IRM->>WSC: SUBSCRIBE to /topic/admin/inventory
+    Note over IRM,WSC: Admin subscribes to all-branch channel<br/>via inventory:read_all permission
+
+    IDV->>AC: GET /inventory?groupBy=service
+    AC->>AF: HTTPS + JWT with inventory:read_all permission
+    AF->>AZF: Validate inventory:read_all
+    AZF->>TCI: Authorized
+
+    TCI->>DB: Activate admin_reporting role with BYPASSRLS
+    TCI->>INV: Tenant context — cross-branch mode
+
+    INV->>BIR: Query all branches, group by service
+    BIR->>DB: SELECT across all inventory_items partitions with parallel scan
+    DB-->>BIR: Aggregated inventory from all branches
+    BIR-->>INV: Inventory data with stock status and alerts
+    INV-->>AC: 200 OK with grouped inventory
+    AC-->>IDV: Render cross-branch inventory grid
+
+    IDV-->>Admin: Display inventory grouped by service across all branches
+
+    Note over Admin,DB: Filters available: category, status, service, branch.<br/>Sorting, pagination at 50 items/page, search by name/SKU.<br/>Color-coded: OK=white, LOW_STOCK=yellow, EXPIRING_SOON=orange, EXPIRED=red.
+
+    REP->>WSC: Real-time update from Branch A — stock change
+    WSC->>IRM: STOMP message on /topic/admin/inventory
+    IRM->>IDV: Update affected item in grid
+    IDV-->>Admin: Item row refreshes with new stock value
+```
+
+
+
+This flow satisfies US-004 (General Administrator sees complete inventory of ALL services), PER-01 (real-time updates via WebSocket), and ESC-02 (parallel partition scans ensure performance with up to 15 branches). The `admin_reporting` RLS bypass allows cross-branch queries while maintaining the SEC-02 security model — only users with `inventory:read_all` permission can activate this bypass, and the authorization is enforced by the middleware pipeline before any database query executes.
+
 <a id="arch-08-interfaces"></a>
 ### 8.- Interfaces
 
@@ -1637,6 +2094,72 @@ The following table describes the read-side interfaces exposed by the Audit & Co
 | **VerifyChainIntegrity**   | `GET /audit/verify`                       | `fromEntryId`, `toEntryId`; walks the SHA-256 hash chain and reports any discontinuities               | CRN-18         |
 
 
+<a id="arch-08-7"></a>
+#### 8.7 — Branch Management Command Interfaces (Iteration 4)
+
+The following table describes the command-side interfaces exposed by the Branch Management module. All commands emit audit events to the `ImmutableAuditStore`. Branch management commands require `branch:manage` permission.
+
+
+| Command | HTTP Verb / Endpoint | Input Invariants | Key Drivers |
+|---|---|---|---|
+| **RegisterBranch** | `POST /branches` | `name` (unique, non-empty), `address` (non-empty) required; `branchId` is UUID. Triggers `BranchOnboardingOrchestrator` after persistence. Emits audit event. | US-071, ESC-01 |
+| **DeactivateBranch** | `POST /branches/:branchId/deactivate` | Branch must exist and be active. Sets `isActive = false`. Preserves all historical data. Prevents new operations at the branch. Users assigned to only this branch are notified. Emits audit event. | US-071 |
+| **SwitchBranch** | `POST /session/branch` | `branchId` required; user must be assigned to the target branch (validated against JWT `branchAssignments`). Re-issues JWT with updated `activeBranchId` claim. Sets PostgreSQL RLS session variable. Does not require re-authentication. | US-074, ESC-03, SEC-02 |
+
+
+<a id="arch-08-8"></a>
+#### 8.8 — Branch Management Query Interfaces (Iteration 4)
+
+
+| Query | HTTP Verb / Endpoint | Parameters | Key Drivers |
+|---|---|---|---|
+| **ListBranches** | `GET /branches` | Optional filters: `isActive`, `onboardingComplete`; paginated. Admin users see all branches; non-admin users see only their assigned branches. | US-071, US-074 |
+| **GetBranch** | `GET /branches/:branchId` | Returns branch details: name, address, isActive, onboardingComplete, creation date, assigned user count. | US-071 |
+| **GetOnboardingStatus** | `GET /branches/:branchId/onboarding` | Returns step-by-step onboarding progress: step name, status (pending/complete/failed), completion timestamp. Requires `branch:manage` permission. | ESC-01 |
+
+
+<a id="arch-08-9"></a>
+#### 8.9 — Inventory Command Interfaces (Iteration 4)
+
+The following table describes the command-side interfaces exposed by the Inventory module. All commands persist an immutable delta to the `InventoryDeltaStore` and require a client-generated `IdempotencyKey` for safe offline replay. Stock materialization occurs atomically via PostgreSQL trigger.
+
+
+| Command | HTTP Verb / Endpoint | Input Invariants | Events Produced | Key Drivers |
+|---|---|---|---|---|
+| **IncrementStock** | `POST /inventory/increments` | `itemId` (UUID, must exist in active branch), `quantity` (positive integer), `reason` (non-empty), `sourceRef` (optional — links to supply delivery, purchase order), `idempotencyKey` (UUID, unique). | Delta: INCREMENT | CRN-44, CRN-43 |
+| **DecrementStock** | `POST /inventory/decrements` | `itemId` (UUID, must exist in active branch), `quantity` (positive integer), `reason` (non-empty), `sourceRef` (optional — links to consultation, dispensation), `idempotencyKey` (UUID, unique). Validation: resulting stock >= 0. | Delta: DECREMENT | CRN-44, CRN-43, CRN-35 |
+| **AdjustStock** | `POST /inventory/adjustments` | `itemId` (UUID, must exist in active branch), `absoluteQuantity` (non-negative integer), `reason` (mandatory — justification for override), `idempotencyKey` (UUID, unique). Requires `inventory:adjust` permission. | Delta: ADJUST | CRN-44 |
+| **SetMinimumThreshold** | `PUT /inventory/:itemId/threshold` | `itemId` (UUID, must exist in active branch), `threshold` (non-negative integer). Triggers immediate re-evaluation of `LowStockAlertProjection` for this item. | Delta: THRESHOLD | US-004, US-005 |
+| **UpdateExpiration** | `PUT /inventory/:itemId/expiration` | `itemId` (UUID, must exist in active branch), `expirationDate` (DATE, must be future or null). Updates `ExpirationAlertProjection`. | Delta: EXPIRATION | US-004 |
+
+
+<a id="arch-08-10"></a>
+#### 8.10 — Inventory Query Interfaces (Iteration 4)
+
+
+| Query | Read Model | HTTP Verb / Endpoint | Parameters | Performance / Consistency | Key Drivers |
+|---|---|---|---|---|---|
+| **GetBranchInventory** | `BranchInventoryReadModel` | `GET /inventory` | `branch_id` (from session or query param for admin), `groupBy` (service/category), `filterStatus`, `filterCategory`, `filterService`, `sortBy`, `page`, `pageSize` (default 50). Admin users with `inventory:read_all` see all branches; others see only active branch. | Partition-pruned queries; <1s per branch; parallel scan for cross-branch admin view | US-004, US-005, PER-01, ESC-02 |
+| **GetInventoryItem** | `BranchInventoryReadModel` | `GET /inventory/:itemId` | `itemId`; returns full detail: SKU, name, category, service, current stock, minimum threshold, expiration date, status, last updated timestamp. Branch-scoped via RLS. | Single-row lookup; <100ms | US-004, US-005 |
+| **SearchInventory** | `BranchInventoryReadModel` | `GET /inventory/search` | `q` (name or SKU substring), `branch_id` (from session). Supports partial matching. | Indexed search; <500ms | US-004, US-005 |
+| **ExportInventory** | `BranchInventoryReadModel` | `GET /inventory/export` | Same filters as `GetBranchInventory`; returns Excel file. Service Managers export only their service. Admins export all or filtered. | Streaming export; file generated server-side | US-004, US-005 |
+
+
+<a id="arch-08-11"></a>
+#### 8.11 — Tariff Management Interfaces (Iteration 4)
+
+The following table describes the command and query interfaces for service tariff configuration. All tariff commands require `tariff:manage` permission (Director General or General Administrator). Tariffs use the temporal effective-date pattern with `DECIMAL(19,4)` precision.
+
+
+| Interface | Type | HTTP Verb / Endpoint | Input / Parameters | Key Drivers |
+|---|---|---|---|---|
+| **CreateTariff** | Command | `POST /tariffs` | `serviceId` (UUID, must reference existing service), `branchId` (UUID), `basePrice` (DECIMAL >= 0.00), `effectiveFrom` (TIMESTAMPTZ, must be current or future). Validates no overlapping effective dates for the same service + branch. | US-064, CRN-42 |
+| **UpdateTariff** | Command | `PUT /tariffs/:tariffId` | `basePrice` (DECIMAL >= 0.00), `effectiveFrom` (TIMESTAMPTZ, must be future). Creates a new effective-date entry; historical tariff records are immutable. | US-064, CRN-42 |
+| **GetActiveTariff** | Query | `GET /tariffs/active?serviceId=X&branchId=Y` | Resolves the current active tariff as `MAX(effectiveFrom) WHERE effectiveFrom <= NOW()` for the given service and branch. Returns `tariffId`, `serviceId`, `branchId`, `basePrice`, `effectiveFrom`. | US-064 |
+| **ListTariffs** | Query | `GET /tariffs` | Optional filters: `serviceId`, `branchId`, `includeHistorical` (default false). Paginated. Returns tariff catalog with service name, code, current price, effective date. | US-064 |
+| **SearchTariffs** | Query | `GET /tariffs/search` | `q` (service name substring). Returns matching tariffs with current active price. | US-064 |
+
+
 <a id="arch-08-6"></a>
 #### 8.6 — Interface-to-Driver Traceability
 
@@ -1665,6 +2188,26 @@ The following table describes the read-side interfaces exposed by the Audit & Co
 | GetAuditTrailForUser               | CRN-17, US-066                                 |
 | GetAccessLogForPatient             | CRN-32, US-066                                 |
 | VerifyChainIntegrity               | CRN-18                                         |
+| RegisterBranch                     | US-071, ESC-01                                 |
+| DeactivateBranch                   | US-071                                         |
+| SwitchBranch                       | US-074, ESC-03, SEC-02                         |
+| ListBranches                       | US-071, US-074                                 |
+| GetBranch                          | US-071                                         |
+| GetOnboardingStatus                | ESC-01                                         |
+| IncrementStock                     | CRN-44, CRN-43                                 |
+| DecrementStock                     | CRN-44, CRN-43, CRN-35                         |
+| AdjustStock                        | CRN-44                                         |
+| SetMinimumThreshold                | US-004, US-005                                 |
+| UpdateExpiration                   | US-004                                         |
+| GetBranchInventory                 | US-004, US-005, PER-01, ESC-02                 |
+| GetInventoryItem                   | US-004, US-005                                 |
+| SearchInventory                    | US-004, US-005                                 |
+| ExportInventory                    | US-004, US-005                                 |
+| CreateTariff                       | US-064, CRN-42                                 |
+| UpdateTariff                       | US-064, CRN-42                                 |
+| GetActiveTariff                    | US-064                                         |
+| ListTariffs                        | US-064                                         |
+| SearchTariffs                      | US-064                                         |
 
 
 <a id="arch-09-decisions"></a>
@@ -1720,4 +2263,18 @@ The following table describes the read-side interfaces exposed by the Audit & Co
 | **US-050, US-051, SEC-01** | Model residency-level restrictions as a first-class `ResidencyLevelPolicy` component with explicit hierarchical rules: R1/R2/R3 blocked from `controlled_med:prescribe`; R1/R2 require mandatory supervision; R4 can prescribe controlled with optional review. Rules loaded from database and cached. Evaluated by `AuthorizationMiddleware` for any permission flagged `requiresResidencyCheck` | Makes residency restrictions explicit and centrally maintained. Avoids scattering level checks across domain modules. The policy is testable in isolation. Rules travel in JWT claims for offline-compatible enforcement | Generic RBAC with one permission per action per level — explosion of fine-grained permissions (4 levels x N actions), loses hierarchical semantics. Hard-coded level checks in each command handler — scattered, duplicated, inconsistent enforcement |
 | **CRN-32** | Implement LFPDPPP compliance as a cross-cutting concern: `LfpdpppComplianceTracker` manages consent lifecycle; consent status embedded in JWT for offline verification; ARCO workflows (Access, Rectification, Cancellation, Opposition) modeled as first-class processes with legal deadline tracking. Rectification on immutable clinical records handled by appending corrective addendum events, preserving CRN-02 | Makes legal compliance architecturally explicit. Consent verification enforceable at middleware level. ARCO workflows have clear ownership and deadline tracking. The corrective-addendum pattern reconciles LFPDPPP Rectification with NOM-004 immutability | Consent as a UI-only checkbox — no enforcement at data layer, impossible to prove compliance. Post-hoc compliance retrofit — expensive and risky after significant unaudited PII access has occurred |
 | **CRN-13, SEC-04** | Implement error sanitization as a terminal middleware filter. All error responses pass through the `ErrorSanitizer` which strips stack traces, internal entity names, database details, and SQL fragments, returning a standardized envelope: `{ code, message, correlationId }`. The correlationId links to detailed internal error in server-side logs | Prevents information leakage in all error paths including unexpected exceptions. Standardized error format simplifies client-side handling. Correlation ID enables support debugging without exposing internals to clients | Verbose error messages in production — direct information leakage. Per-handler error formatting — inconsistent; a single missed handler leaks internal details |
+
+<a id="arch-iter-4"></a>
+#### Iteration 4 — Multi-Branch Operations and Inventory Management
+
+| Driver | Decision | Rationale | Discarded Alternatives |
+|---|---|---|---|
+| **CRN-44, CRN-35** | Adopt CQRS for the Inventory bounded context with an append-only `InventoryDeltaStore` and PostgreSQL trigger-based stock materialization. Every stock change is recorded as an intent-based delta command (IncrementStock, DecrementStock, AdjustStock). Current stock is atomically derived by a PostgreSQL `AFTER INSERT` trigger on the delta table, eliminating any eventual consistency gap. `pg_notify` bridges the database event to the WebSocket real-time layer | Delta commands enable deterministic offline conflict resolution — deltas can be replayed in any order and produce the same final state when combined with timestamp ordering. Trigger-based materialization guarantees stock consistency within the same transaction as the delta insertion. Consistent with the CQRS pattern adopted for Clinical Care in Iteration 2 and the offline-aware conventions from Iteration 1 (CRN-43) | CRUD with direct stock updates — absolute state overwrites prevent deterministic offline merge and lose mutation history. Application-level materialization job — introduces delay between delta write and stock update, risks stale reads. Full event sourcing with runtime projection — excessive for inventory volumes; runtime replay latency unacceptable for PER-01 |
+| **PER-01, ESC-02** | Implement real-time inventory update propagation via WebSocket publish-subscribe using Spring STOMP with tenant-scoped channels. `RealtimeEventPublisher` listens to PostgreSQL `pg_notify('inventory_changes')` and publishes structured STOMP messages to `/topic/branch/{branchId}/inventory`. Admin users subscribe to `/topic/admin/inventory` for cross-branch events | Sub-2-second end-to-end propagation achievable with push model (database trigger → pg_notify → WebSocket → UI). Eliminates polling overhead that would scale poorly with branch count. Tenant-scoped channels enforce data segmentation at the transport layer. Linear connection scaling — 15 branches x ~10 users = ~150 connections, well within STOMP capacity | Short polling — unacceptable latency vs. resource trade-off at 2-second target with 15 branches. Server-Sent Events (SSE) — unidirectional only, no standard reconnection ID across browsers. Raw WebSocket without STOMP — requires custom topic routing and subscription management. External message broker — operational overhead disproportionate for ~150 connections |
+| **US-071, ESC-01** | Implement branch registration with a choreographed 5-step idempotent onboarding workflow via `BranchOnboardingOrchestrator`: (1) create database partitions, (2) seed service catalog, (3) copy active tariffs, (4) initialize inventory, (5) mark complete. Each step records progress in `branch_onboarding_status` for resumability | Each step independently testable and idempotent — safe to retry on failure. Measurable progress toward ESC-01 (<1 hour target). Progress tracking enables admin monitoring. No external orchestrator infrastructure needed | Manual step-by-step admin configuration — error-prone, unmeasurable against ESC-01 time target. Event-driven choreography across modules — harder to track overall progress and ensure step ordering; debugging distributed failures is disproportionate for an internal workflow |
+| **US-074, ESC-03** | Implement mid-session branch context switching via JWT re-issuance without re-authentication. `BranchContextService` validates user assignment, delegates to `AuthenticationService` for JWT re-issuance with updated `activeBranchId`, resets PostgreSQL RLS session variable. PWA clears IndexedDB cache and re-subscribes WebSocket to new branch channel | <3 seconds achievable without password re-entry. RLS immediately enforces new branch scope on all queries. Cache clearing prevents cross-branch data leakage (SEC-02). WebSocket re-subscription ensures correct real-time event feed for the new branch | Logout and re-login — violates ESC-03 requirement (no logout required). Client-side branch context only — no server-side RLS enforcement, security gap for SEC-02 |
+| **ESC-02, CRN-24** | Partition `inventory_items` and `inventory_deltas` tables by `branch_id` using PostgreSQL declarative partitioning (`PARTITION BY LIST`). `BranchOnboardingOrchestrator` creates new partitions during branch registration. Cross-branch admin queries use parallel partition scans | Partition pruning ensures per-branch query performance is independent of total branch count — adding branches from 3 to 15 has near-zero impact on individual branch queries. Smaller per-partition indexes improve cache hit rates. Cross-branch admin queries benefit from PostgreSQL parallel scan capability | No partitioning (single table with branch_id index) — acceptable at 3 branches but index growth degrades performance beyond target with 15 branches. Database sharding across separate instances — excessive operational complexity and cross-shard query difficulty for a single-team deployment |
+| **CRN-35** | Enforce optimistic concurrency within a branch via `SELECT ... FOR UPDATE` on the `inventory_items` row before processing delta commands. Cross-branch conflicts on shared supply catalogs resolved by applying deltas in timestamp order (last-writer-wins). UTC timestamps from CRN-41 ensure consistent ordering | Deterministic serialization within a branch prevents lost updates. Timestamp ordering is compatible with future offline delta replay in Iteration 6. No distributed lock manager needed. Database-level locking avoids application-level race conditions | Pessimistic distributed locks — high latency, incompatible with offline operation. CRDT-based counters — excellent for offline merge but adds significant complexity prematurely; can be adopted in Iteration 6 if delta ordering proves insufficient. Application-level optimistic locking with version column — weaker than DB-level serialization |
+| **US-064** | Implement temporal effective-date tariff pattern via `TariffManagementService`. Each `ServiceTariff` carries `effectiveFrom` timestamp. Active tariff resolved as `MAX(effectiveFrom) WHERE effectiveFrom <= NOW()`. Historical tariffs immutable — price changes only affect future charges. All prices stored as `DECIMAL(19,4)` per CRN-42 | Historical price integrity preserved — past charges unaffected by price changes and remain auditable. Simple temporal query pattern. No deletion of records aligns with auditability requirements. Supports $0.00 pricing for free services | Overwrite-in-place pricing — loses price history, past charges become unverifiable against the price at time of service. Separate price history table — data duplication, synchronization risk between active and historical tables |
+| **SEC-02** | Extend RLS policies to `inventory_items`, `inventory_deltas`, and `service_tariffs` tables, filtering by `app.current_branch_id`. `admin_reporting` role with `BYPASSRLS` enables cross-branch inventory views for authorized admin users (US-004). WebSocket subscriptions also enforce tenant scoping via `WebSocketSecurityInterceptor` | Defense-in-depth consistent with the Iteration 3 SEC-02 model — even application bugs cannot leak cross-branch inventory data. Three enforcement layers: middleware authorization, RLS at database, and WebSocket subscription authorization | Application-level WHERE clause only — single enforcement layer; insufficient for High/High scenario. No RLS on inventory tables — inconsistent with the security model applied to clinical and user data |
 

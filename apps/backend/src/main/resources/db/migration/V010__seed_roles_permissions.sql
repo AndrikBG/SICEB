@@ -224,7 +224,7 @@ WHERE r.name = 'Laboratorio'
 -- ============================================================
 INSERT INTO users (username, email, full_name, password_hash, role_id, is_active, must_change_password, branch_id)
 SELECT 'admin', 'admin@siceb.mx', 'Administrador del Sistema',
-       '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+       '$2a$10$Wupx5mkPpBvJnhmxDC4gEO94unT47.lnK7rZuHC5p/Hdd9G8i4UqO',
        r.role_id, TRUE, FALSE,
        (SELECT id FROM branches LIMIT 1)
 FROM roles r WHERE r.name = 'Administrador General';

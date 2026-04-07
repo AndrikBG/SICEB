@@ -16,7 +16,7 @@ export function ProtectedRoute() {
     return <Navigate to="/change-password" replace />;
   }
 
-  if (!activeBranch && user && user.branches.length > 1 && location.pathname !== '/select-branch') {
+  if (!activeBranch && user && (user.branches?.length ?? 0) > 1 && location.pathname !== '/select-branch') {
     return <Navigate to="/select-branch" replace />;
   }
 

@@ -36,7 +36,7 @@ export function RoleConfigurationView() {
 
   function handleSelectRole(role: RoleItem) {
     setSelectedRole(role);
-    setSelectedPermissions(new Set(role.permissions.map((p) => p.permissionId)));
+    setSelectedPermissions(new Set(role.permissions ?? []));
     setShowCreateForm(false);
     setSuccess('');
   }
@@ -59,7 +59,7 @@ export function RoleConfigurationView() {
     try {
       await createRole({
         name: newRoleName,
-        permissionIds: Array.from(selectedPermissions),
+        permissionKeys: Array.from(selectedPermissions),
       });
       setNewRoleName('');
       setSelectedPermissions(new Set());
@@ -75,12 +75,12 @@ export function RoleConfigurationView() {
     if (!selectedRole) return;
     setError('');
     try {
-      await updateRole(selectedRole.roleId, {
-        permissionIds: Array.from(selectedPermissions),
+      await updateRole(selectedRole.id, {
+        permissionKeys: Array.from(selectedPermissions),
       });
       setSuccess('Permisos actualizados');
       await loadData();
-      const updated = roles.find((r) => r.roleId === selectedRole.roleId);
+      const updated = roles.find((r) => r.id === selectedRole.id);
       if (updated) setSelectedRole(updated);
     } catch {
       setError('Error al actualizar permisos');
@@ -131,17 +131,17 @@ export function RoleConfigurationView() {
           <div className="space-y-1">
             {roles.map((role) => (
               <button
-                key={role.roleId}
+                key={role.id}
                 onClick={() => handleSelectRole(role)}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                  selectedRole?.roleId === role.roleId
+                  selectedRole?.id === role.id
                     ? 'bg-purple-100 text-purple-800 font-medium'
                     : 'hover:bg-gray-50 text-gray-700'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span>{role.name}</span>
-                  {role.isSystemRole && (
+                  {role.systemRole && (
                     <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">sistema</span>
                   )}
                 </div>
@@ -182,7 +182,7 @@ export function RoleConfigurationView() {
                 <h2 className="font-semibold text-gray-900">
                   Permisos: {selectedRole.name}
                 </h2>
-                {!selectedRole.isSystemRole && (
+                {!selectedRole.systemRole && (
                   <button
                     onClick={handleUpdatePermissions}
                     className="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
@@ -191,7 +191,7 @@ export function RoleConfigurationView() {
                   </button>
                 )}
               </div>
-              {selectedRole.isSystemRole && (
+              {selectedRole.systemRole && (
                 <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
                   Los roles de sistema no pueden ser editados.
                 </p>
@@ -199,7 +199,7 @@ export function RoleConfigurationView() {
               <PermissionGrid
                 categories={permissionsByCategory}
                 selected={selectedPermissions}
-                onToggle={selectedRole.isSystemRole ? undefined : togglePermission}
+                onToggle={selectedRole.systemRole ? undefined : togglePermission}
               />
             </div>
           ) : (
@@ -232,15 +232,15 @@ function PermissionGrid({
           <div className="space-y-1">
             {perms.map((perm) => (
               <label
-                key={perm.permissionId}
+                key={perm.key}
                 className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm ${
                   onToggle ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'
                 }`}
               >
                 <input
                   type="checkbox"
-                  checked={selected.has(perm.permissionId)}
-                  onChange={() => onToggle?.(perm.permissionId)}
+                  checked={selected.has(perm.key)}
+                  onChange={() => onToggle?.(perm.key)}
                   disabled={!onToggle}
                   className="h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
                 />

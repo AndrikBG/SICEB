@@ -8,6 +8,7 @@ import {
   type UserListItem,
   type RoleItem,
 } from '@/lib/auth-api';
+import { useAuthStore } from '@/stores/auth-store';
 
 export function UserManagementView() {
   const [users, setUsers] = useState<UserListItem[]>([]);
@@ -15,13 +16,15 @@ export function UserManagementView() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const userBranches = useAuthStore((s) => s.user?.branches ?? []);
 
   const [form, setForm] = useState({
     username: '',
     email: '',
     fullName: '',
     roleId: '',
-    tempPassword: '',
+    primaryBranchId: '',
+    temporaryPassword: '',
   });
 
   async function loadData() {
@@ -48,22 +51,30 @@ export function UserManagementView() {
         email: form.email,
         fullName: form.fullName,
         roleId: form.roleId,
-        tempPassword: form.tempPassword,
+        primaryBranchId: form.primaryBranchId,
+        temporaryPassword: form.temporaryPassword || undefined,
       });
       setShowForm(false);
-      setForm({ username: '', email: '', fullName: '', roleId: '', tempPassword: '' });
+      setForm({ username: '', email: '', fullName: '', roleId: '', primaryBranchId: '', temporaryPassword: '' });
       await loadData();
-    } catch {
-      setError('Error al crear usuario');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr.response?.status === 400) {
+        setError(axiosErr.response.data?.message ?? 'Datos inválidos. Verifica los campos e intenta de nuevo.');
+      } else if (axiosErr.response?.status === 409) {
+        setError('El nombre de usuario o email ya existe.');
+      } else {
+        setError('Error inesperado al crear usuario. Intenta de nuevo más tarde.');
+      }
     }
   }
 
   async function handleToggleActive(user: UserListItem) {
     try {
-      if (user.isActive) {
-        await deactivateUser(user.userId);
+      if (user.active) {
+        await deactivateUser(user.id);
       } else {
-        await activateUser(user.userId);
+        await activateUser(user.id);
       }
       await loadData();
     } catch {
@@ -97,7 +108,7 @@ export function UserManagementView() {
       )}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+        <form onSubmit={handleCreate} autoComplete="off" className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">Crear Usuario</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -106,6 +117,7 @@ export function UserManagementView() {
                 value={form.fullName}
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                 required
+                autoComplete="off"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
               />
             </div>
@@ -115,6 +127,7 @@ export function UserManagementView() {
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 required
+                autoComplete="off"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
               />
             </div>
@@ -125,6 +138,7 @@ export function UserManagementView() {
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
+                autoComplete="off"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
               />
             </div>
@@ -138,7 +152,21 @@ export function UserManagementView() {
               >
                 <option value="">Seleccionar rol...</option>
                 {roles.map((r) => (
-                  <option key={r.roleId} value={r.roleId}>{r.name}</option>
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sucursal principal</label>
+              <select
+                value={form.primaryBranchId}
+                onChange={(e) => setForm({ ...form, primaryBranchId: e.target.value })}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              >
+                <option value="">Seleccionar sucursal...</option>
+                {userBranches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
             </div>
@@ -146,10 +174,11 @@ export function UserManagementView() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña temporal</label>
               <input
                 type="password"
-                value={form.tempPassword}
-                onChange={(e) => setForm({ ...form, tempPassword: e.target.value })}
-                required
+                value={form.temporaryPassword}
+                onChange={(e) => setForm({ ...form, temporaryPassword: e.target.value })}
                 minLength={8}
+                autoComplete="new-password"
+                placeholder="Dejar vacío para usar la predeterminada"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
               />
             </div>
@@ -179,28 +208,28 @@ export function UserManagementView() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {users.map((u) => (
-              <tr key={u.userId} className="hover:bg-gray-50">
+              <tr key={u.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">{u.fullName}</td>
                 <td className="px-4 py-3 text-gray-600">{u.username}</td>
                 <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                <td className="px-4 py-3 text-gray-600">{u.roleName}</td>
+                <td className="px-4 py-3 text-gray-600">{u.role || 'Sin rol'}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    u.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                   }`}>
-                    {u.isActive ? 'Activo' : 'Inactivo'}
+                    {u.active ? 'Activo' : 'Inactivo'}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
                     onClick={() => handleToggleActive(u)}
                     className={`text-xs font-medium px-3 py-1 rounded-md transition-colors ${
-                      u.isActive
+                      u.active
                         ? 'text-red-600 hover:bg-red-50'
                         : 'text-green-600 hover:bg-green-50'
                     }`}
                   >
-                    {u.isActive ? 'Desactivar' : 'Activar'}
+                    {u.active ? 'Desactivar' : 'Activar'}
                   </button>
                 </td>
               </tr>

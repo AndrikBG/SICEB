@@ -5,6 +5,7 @@ import type { UserInfo, BranchInfo } from '@/lib/auth-api';
 export interface AuthState {
   user: UserInfo | null;
   accessToken: string | null;
+  sessionVersion: number;
   isAuthenticated: boolean;
   mustChangePassword: boolean;
   activeBranch: BranchInfo | null;
@@ -21,20 +22,23 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       accessToken: null,
+      sessionVersion: 0,
       isAuthenticated: false,
       mustChangePassword: false,
       activeBranch: null,
 
-      setSession: (user, accessToken, mustChangePassword) =>
-        set({
-          user,
+      setSession: (user, accessToken, mustChangePassword) => {
+        const branches = user.branches ?? [];
+        const normalized = { ...user, branches };
+        return set({
+          user: normalized,
           accessToken,
+          sessionVersion: get().sessionVersion + 1,
           isAuthenticated: true,
           mustChangePassword,
-          activeBranch: user.branches.length === 1
-            ? user.branches[0]
-            : null,
-        }),
+          activeBranch: branches.length === 1 ? branches[0] : null,
+        });
+      },
 
       clearSession: () =>
         set({
@@ -59,10 +63,19 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         user: state.user,
+        accessToken: state.accessToken,
         isAuthenticated: state.isAuthenticated,
         mustChangePassword: state.mustChangePassword,
         activeBranch: state.activeBranch,
       }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<AuthState> | undefined;
+        const next = { ...current, ...p } as AuthState;
+        if (next.user && next.user.branches == null) {
+          next.user = { ...next.user, branches: [] };
+        }
+        return next;
+      },
     },
   ),
 );

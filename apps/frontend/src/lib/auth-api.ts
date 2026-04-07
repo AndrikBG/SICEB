@@ -59,19 +59,26 @@ export async function changePassword(data: ChangePasswordRequest): Promise<void>
 }
 
 export interface UserListItem {
-  userId: string;
+  id: string;
   username: string;
   fullName: string;
   email: string;
-  roleName: string;
-  isActive: boolean;
+  role: string;
+  active: boolean;
+  mustChangePassword: boolean;
+  primaryBranchId: string;
+  branchAssignments: string[];
 }
 
+/** Alineado con `RoleResponse` del backend (`GET /api/roles`). */
 export interface RoleItem {
-  roleId: string;
+  id: string;
   name: string;
-  isSystemRole: boolean;
-  permissions: { permissionId: string; key: string; description: string; category: string }[];
+  description?: string | null;
+  systemRole: boolean;
+  active: boolean;
+  /** Claves de permiso (strings), no objetos completos. */
+  permissions: string[];
 }
 
 export interface PermissionItem {
@@ -115,12 +122,16 @@ export async function activateUser(userId: string): Promise<void> {
   await api.post(`/api/users/${userId}/activate`);
 }
 
-export async function createRole(data: { name: string; permissionIds: string[] }): Promise<unknown> {
+export async function createRole(data: {
+  name: string;
+  description?: string;
+  permissionKeys: string[];
+}): Promise<unknown> {
   const res = await api.post('/api/roles', data);
   return res.data;
 }
 
-export async function updateRole(roleId: string, data: { permissionIds: string[] }): Promise<unknown> {
+export async function updateRole(roleId: string, data: { permissionKeys: string[] }): Promise<unknown> {
   const res = await api.put(`/api/roles/${roleId}`, data);
   return res.data;
 }

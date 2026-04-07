@@ -1,9 +1,11 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { PwaUpdatePrompt } from '@/components/pwa-update-prompt';
 import { useAuthStore } from '@/stores/auth-store';
 import { RoleAwareRenderer } from '@/components/RoleAwareRenderer';
 import { logout as apiLogout } from '@/lib/auth-api';
+import type { BranchInfo } from '@/lib/auth-api';
 
 const NAV_ITEMS = [
   { path: '/patients', label: 'Pacientes', permission: 'patient:read' },
@@ -22,6 +24,7 @@ export function Layout() {
   const connectionStatus = useOnlineStatus();
   const user = useAuthStore((s) => s.user);
   const activeBranch = useAuthStore((s) => s.activeBranch);
+  const setActiveBranch = useAuthStore((s) => s.setActiveBranch);
   const clearSession = useAuthStore((s) => s.clearSession);
 
   const statusDot = {
@@ -91,10 +94,12 @@ export function Layout() {
             </div>
 
             <div className="flex items-center gap-4">
-              {activeBranch && (
-                <span className="hidden sm:inline text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                  {activeBranch.name}
-                </span>
+              {user && (user.branches?.length ?? 0) > 0 && (
+                <BranchSelector
+                  branches={user.branches ?? []}
+                  activeBranch={activeBranch}
+                  onSelect={(branch) => setActiveBranch(branch)}
+                />
               )}
               <span className={`h-2 w-2 rounded-full ${statusDot}`} />
               {user && (
@@ -120,6 +125,73 @@ export function Layout() {
       </main>
 
       <PwaUpdatePrompt />
+    </div>
+  );
+}
+
+function BranchSelector({
+  branches,
+  activeBranch,
+  onSelect,
+}: Readonly<{
+  branches: BranchInfo[];
+  activeBranch: BranchInfo | null;
+  onSelect: (branch: BranchInfo) => void;
+}>) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  if (branches.length <= 1) {
+    return (
+      <span className="hidden sm:inline text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+        {activeBranch?.name ?? branches[0]?.name ?? 'Sin sucursal'}
+      </span>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative hidden sm:block">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition-colors"
+      >
+        <span className="h-2 w-2 rounded-full bg-purple-500 flex-shrink-0" />
+        {activeBranch?.name ?? 'Seleccionar sucursal'}
+        <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50">
+          <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">
+            Cambiar sucursal
+          </p>
+          {branches.map((branch) => (
+            <button
+              key={branch.id}
+              onClick={() => { onSelect(branch); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 ${
+                activeBranch?.id === branch.id
+                  ? 'bg-purple-50 text-purple-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                activeBranch?.id === branch.id ? 'bg-purple-500' : 'bg-gray-300'
+              }`} />
+              {branch.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

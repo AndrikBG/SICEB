@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clinicalApi } from '@/lib/clinical-api';
 import { useClinicalStore } from '@/stores/clinical-store';
@@ -10,6 +10,7 @@ export function ConsultationWizard() {
   const navigate = useNavigate();
   const store = useClinicalStore();
   const { wizard } = store;
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (store.activePatient?.recordId) {
@@ -30,6 +31,7 @@ export function ConsultationWizard() {
   const handleSubmit = async () => {
     if (!wizard.recordId || !wizard.consultationId) return;
     store.setLoading(true);
+    setSubmitError('');
     try {
       const idemBase = crypto.randomUUID();
 
@@ -72,8 +74,15 @@ export function ConsultationWizard() {
       }
 
       navigate(`/patients/${patientId}`);
-    } catch (err) {
-      console.error('Consultation submit error', err);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr.response?.status === 403) {
+        setSubmitError('No tienes permisos para registrar consultas. Tu rol actual no incluye el permiso "consultation:create". Contacta al administrador para que asigne los permisos necesarios.');
+      } else if (axiosErr.response?.status === 401) {
+        setSubmitError('Tu sesión ha expirado. Por favor inicia sesión de nuevo.');
+      } else {
+        setSubmitError('Ocurrió un error al guardar la consulta. Intenta de nuevo.');
+      }
     } finally {
       store.setLoading(false);
     }
@@ -85,6 +94,12 @@ export function ConsultationWizard() {
       <p className="text-sm text-gray-500">{store.activePatient?.fullName ?? patientId}</p>
 
       <StepIndicator current={wizard.step} steps={STEPS} />
+
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+          {submitError}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         {wizard.step === 0 && <Step1VitalsDiagnosis />}

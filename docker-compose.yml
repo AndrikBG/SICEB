@@ -45,5 +45,25 @@ services:
     depends_on:
       - api
 
+  # SonarQube local para análisis (no arranca con "docker compose up" por defecto)
+  # "community" = última Community Build; "lts-community" = ramal LTS (más antiguo, estable)
+  # Si al cambiar de imagen falla el arranque (H2 / sonar.mv.db), borra solo el volumen
+  # sonarqube_data: docker compose --profile sonar rm -sf sonarqube && docker volume rm <proyecto>_sonarqube_data
+  sonarqube:
+    image: sonarqube:community
+    profiles:
+      - sonar
+    ports:
+      - "${SONAR_PORT:-9000}:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
 volumes:
   pgdata:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

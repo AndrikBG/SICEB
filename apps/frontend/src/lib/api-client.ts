@@ -46,6 +46,8 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      const versionAtFailure = useAuthStore.getState().sessionVersion;
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({
@@ -72,7 +74,9 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        useAuthStore.getState().clearSession();
+        if (useAuthStore.getState().sessionVersion === versionAtFailure) {
+          useAuthStore.getState().clearSession();
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
